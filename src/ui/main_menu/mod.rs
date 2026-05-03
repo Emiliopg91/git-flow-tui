@@ -53,7 +53,7 @@ impl UiIface for MainMenu {
         let list = List::new(Self::ENTRIES.iter().map(|s| ListItem::from(*s)))
             .style(Color::White)
             .highlight_style(Modifier::REVERSED)
-            .highlight_symbol("> ");
+            .highlight_symbol(" ");
 
         frame.render_stateful_widget(list, body, &mut self.entry);
 

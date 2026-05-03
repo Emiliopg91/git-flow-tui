@@ -1,6 +1,8 @@
 pub mod errors;
 
 use std::{
+    fs,
+    path::PathBuf,
     process::{Command, exit},
     sync::{Mutex, OnceLock},
 };
@@ -21,24 +23,33 @@ static GIT_WRAPPER_INST: OnceLock<Mutex<GitWrapper>> = OnceLock::new();
 
 impl GitWrapper {
     pub fn global() -> &'static Mutex<GitWrapper> {
-        GIT_WRAPPER_INST.get_or_init(|| {
-            Mutex::new(Self::initialize().unwrap_or_else(|e| {
-                println!("{}", e);
-                exit(ExitCode::NotAGitRepository.code())
-            }))
-        })
+        GIT_WRAPPER_INST.get().unwrap()
     }
 
-    pub fn initialize() -> Result<Self, GitError> {
-        let res = Self::run_git_command(["rev-parse", "--show-toplevel"], false).unwrap();
+    pub fn initialize(path_buf: PathBuf) -> Result<(), GitError> {
+        if !fs::exists(&path_buf).unwrap() {
+            return Err(GitError::NotAGitRepository);
+        }
+
+        let path = path_buf.display().to_string();
+
+        let res = Self::run_git_command(["rev-parse", "--show-toplevel"], &path, false).unwrap();
         if res.status != 0 {
             return Err(GitError::NotAGitRepository);
         }
 
-        Ok(Self { path: res.stdout })
+        let inst = Self { path: res.stdout };
+
+        GIT_WRAPPER_INST.get_or_init(|| Mutex::new(inst));
+
+        Ok(())
     }
 
-    fn run_git_command<I, S>(args: I, check: bool) -> Result<GitCmdResult, std::io::Error>
+    fn run_git_command<I, S>(
+        args: I,
+        cwd: &String,
+        check: bool,
+    ) -> Result<GitCmdResult, std::io::Error>
     where
         I: IntoIterator<Item = S>,
         S: AsRef<str>,
@@ -47,6 +58,7 @@ impl GitWrapper {
 
         let res = Command::new("git")
             .args(&args_vec)
+            .current_dir(cwd)
             .env("LANG", "C")
             .output()?;
 
@@ -80,20 +92,22 @@ impl GitWrapper {
     }
 
     pub fn has_changes(&self) -> Result<bool, GitError> {
-        Ok(Self::run_git_command(["status", "--porcelain"], true)
-            .map_err(|e| GitError::from(e))
-            .unwrap()
-            .stdout
-            .lines()
-            .map(|s| s.to_string())
-            .collect::<Vec<String>>()
-            .len()
-            > 0)
+        Ok(
+            Self::run_git_command(["status", "--porcelain"], &self.path, true)
+                .map_err(|e| GitError::from(e))
+                .unwrap()
+                .stdout
+                .lines()
+                .map(|s| s.to_string())
+                .collect::<Vec<String>>()
+                .len()
+                > 0,
+        )
     }
 
     pub fn get_branch(&self) -> Result<String, GitError> {
         Ok(
-            Self::run_git_command(["rev-parse", "--abbrev-ref", "HEAD"], true)
+            Self::run_git_command(["rev-parse", "--abbrev-ref", "HEAD"], &self.path, true)
                 .map_err(|e| GitError::from(e))
                 .unwrap()
                 .stdout,

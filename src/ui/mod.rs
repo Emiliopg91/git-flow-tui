@@ -1,14 +1,16 @@
 mod main_menu;
 
+use std::path::Path;
+
 use ratatui::{
     Frame,
     crossterm::event::{self, KeyCode},
     layout::{Alignment, Constraint, Layout, Margin, Rect},
     style::{Color, Style},
-    widgets::Paragraph,
+    widgets::{Block, Borders, Paragraph},
 };
 
-use crate::ui::main_menu::MainMenu;
+use crate::{git::GitWrapper, ui::main_menu::MainMenu};
 
 pub enum AppState {
     MainMenu,
@@ -80,18 +82,44 @@ pub fn main_loop() -> color_eyre::Result<()> {
 }
 
 fn render(frame: &mut Frame, app: &mut App) {
+    // layout vertical
     let layout = Layout::vertical([
         Constraint::Length(1),
         Constraint::Fill(3),
         Constraint::Length(1),
     ]);
+
     let area = frame.area().inner(Margin {
         vertical: 1,
         horizontal: 1,
     });
-    let [header_area, body, footer_area] = area.layout(&layout);
+
+    let [header_area, body_area, footer_area] = area.layout(&layout);
+
+    // layout horizontal para centrar
+    let horizontal = Layout::horizontal([
+        Constraint::Fill(1),
+        Constraint::Percentage(75),
+        Constraint::Fill(1),
+    ]);
+
+    let [_, centered_body, _] = body_area.layout(&horizontal);
+
+    // 👇 crear bloque con borde
+    let block = Block::default().borders(Borders::ALL);
+
+    // 👇 renderizar el borde
+    frame.render_widget(block, centered_body);
+
+    // 👇 obtener el área interna del bloque (sin bordes)
+    let inner = centered_body.inner(Margin {
+        vertical: 1,
+        horizontal: 1,
+    });
+
+    // pasar área interna a tu render
     match app.state {
-        AppState::MainMenu => app.page.render(header_area, body, footer_area, frame),
+        AppState::MainMenu => app.page.render(header_area, inner, footer_area, frame),
         _ => (),
     }
 }
