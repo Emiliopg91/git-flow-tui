@@ -4,3 +4,11 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+color-eyre = "0.6.5"
+ratatui = "0.30.0"
+
+[profile.release]
+lto = "fat"       # thin or fat
+codegen-units = 1
+strip = true
+opt-level = 3

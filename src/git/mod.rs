@@ -74,8 +74,8 @@ impl GitWrapper {
 
         Ok(GitCmdResult {
             status,
-            stdout: String::from_utf8_lossy(&res.stdout).to_string(),
-            stderr: String::from_utf8_lossy(&res.stderr).to_string(),
+            stdout: String::from_utf8_lossy(&res.stdout).trim().to_string(),
+            stderr: String::from_utf8_lossy(&res.stderr).trim().to_string(),
         })
     }
 
@@ -89,5 +89,14 @@ impl GitWrapper {
             .collect::<Vec<String>>()
             .len()
             > 0)
+    }
+
+    pub fn get_branch(&self) -> Result<String, GitError> {
+        Ok(
+            Self::run_git_command(["rev-parse", "--abbrev-ref", "HEAD"], true)
+                .map_err(|e| GitError::from(e))
+                .unwrap()
+                .stdout,
+        )
     }
 }
