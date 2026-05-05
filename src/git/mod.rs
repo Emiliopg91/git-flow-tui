@@ -3,11 +3,11 @@ pub mod errors;
 use std::{
     fs,
     path::PathBuf,
-    process::{Command, exit},
+    process::Command,
     sync::{Mutex, OnceLock},
 };
 
-use crate::{git::errors::GitError, others::exit_code::ExitCode};
+use crate::git::errors::GitError;
 
 pub struct GitWrapper {
     pub path: String,
@@ -112,5 +112,146 @@ impl GitWrapper {
                 .unwrap()
                 .stdout,
         )
+    }
+
+    pub fn checkout(&self, branch: &String) -> Result<(), GitError> {
+        let res = Self::run_git_command(["checkout", branch], &self.path, false).unwrap();
+        if res.status != 0 {
+            return Err(GitError::CheckoutFailed {
+                branch: branch.clone(),
+            });
+        }
+
+        Ok(())
+    }
+
+    pub fn merge(&self, branch: &String) -> Result<(), GitError> {
+        let res = Self::run_git_command(["merge", branch], &self.path, false).unwrap();
+        if res.status != 0 {
+            return Err(GitError::MergeFailed {
+                branch: branch.clone(),
+            });
+        }
+
+        Ok(())
+    }
+
+    pub fn pull(&self) -> Result<(), GitError> {
+        let res = Self::run_git_command(["pull"], &self.path, false).unwrap();
+        if res.status != 0 {
+            return Err(GitError::PullFailed {
+                branch: self.get_branch().unwrap(),
+            });
+        }
+
+        Ok(())
+    }
+
+    pub fn push(&self) -> Result<(), GitError> {
+        let cur_branch = self.get_branch().unwrap();
+        let mut args = ["push".to_string()].to_vec();
+
+        if !self.get_branches().unwrap().contains(&cur_branch) {
+            args.push("--set-upstream".to_string());
+            args.push("origin".to_string());
+            args.push(self.get_branch().unwrap());
+        }
+
+        let res = Self::run_git_command(&args, &self.path, false).unwrap();
+        if res.status != 0 {
+            return Err(GitError::PushFailed {
+                branch: self.get_branch().unwrap(),
+            });
+        }
+
+        Ok(())
+    }
+
+    pub fn create_branch(&self, branch: &String) -> Result<(), GitError> {
+        let res = Self::run_git_command(["checkout", "-b", branch], &self.path, false).unwrap();
+        if res.status != 0 {
+            return Err(GitError::BranchFailed {
+                branch: self.get_branch().unwrap(),
+            });
+        }
+
+        Ok(())
+    }
+
+    pub fn delete_branch(&self, branch: &String) -> Result<(), GitError> {
+        let res = Self::run_git_command(["branch", "-D", branch], &self.path, false).unwrap();
+        if res.status != 0 {
+            return Err(GitError::BranchDeletionFailed {
+                branch: self.get_branch().unwrap(),
+            });
+        }
+
+        Ok(())
+    }
+
+    pub fn get_branches(&self) -> Result<Vec<String>, GitError> {
+        let res = Self::run_git_command(["branch"], &self.path, false).unwrap();
+        if res.status != 0 {
+            return Err(GitError::ListBranchFailed);
+        }
+
+        Ok(res.stdout.lines().map(|s| s.to_string()).collect())
+    }
+
+    pub fn get_remote_branches(&self) -> Result<Vec<String>, GitError> {
+        let res = Self::run_git_command(["branch", "-r"], &self.path, false).unwrap();
+        if res.status != 0 {
+            return Err(GitError::ListBranchFailed);
+        }
+
+        Ok(res.stdout.lines().map(|s| s.to_string()).collect())
+    }
+
+    pub fn get_features(&self) -> Result<Vec<String>, GitError> {
+        Ok(self
+            .get_branches()
+            .unwrap()
+            .iter()
+            .filter_map(|s| {
+                let s = s.replace("*", " ").replace("  ", "");
+                if s.starts_with("feature/") {
+                    Some(s.replace("feature/", ""))
+                } else {
+                    None
+                }
+            })
+            .collect())
+    }
+
+    pub fn get_releases(&self) -> Result<Vec<String>, GitError> {
+        Ok(self
+            .get_branches()
+            .unwrap()
+            .iter()
+            .filter_map(|s| {
+                let s = s.replace("*", " ").replace("  ", "");
+                if s.starts_with("release/") {
+                    Some(s.replace("release/", ""))
+                } else {
+                    None
+                }
+            })
+            .collect())
+    }
+
+    pub fn get_remote_releases(&self) -> Result<Vec<String>, GitError> {
+        Ok(self
+            .get_remote_branches()
+            .unwrap()
+            .iter()
+            .filter_map(|s| {
+                let s = s.replace("*", " ").replace("  ", "");
+                if s.starts_with("release/") {
+                    Some(s.replace("release/", ""))
+                } else {
+                    None
+                }
+            })
+            .collect())
     }
 }

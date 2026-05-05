@@ -1,11 +1,16 @@
-use std::{env, path::PathBuf, process::exit};
+use std::{collections::HashMap, env, path::PathBuf, process::exit};
 
 use color_eyre::eyre::Result;
 
-use crate::{git::GitWrapper, others::exit_code::ExitCode, ui::main_loop};
+use crate::{
+    git::GitWrapper,
+    others::{exit_code::ExitCode, whiteboard::WHITEBOARD},
+    ui::main_loop,
+};
 use clap::Parser;
 
 mod git;
+mod logic;
 mod others;
 mod ui;
 
@@ -43,6 +48,8 @@ fn main() -> Result<()> {
         eprintln!("Fix it and try again.");
         exit(ExitCode::UncommitedChanges.code());
     }
+
+    WHITEBOARD.get_or_init(|| HashMap::new().into());
 
     main_loop()
 }

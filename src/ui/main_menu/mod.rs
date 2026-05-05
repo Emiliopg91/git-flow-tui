@@ -14,7 +14,6 @@ use ratatui::{
 };
 
 use crate::{
-    git::GitWrapper,
     others::exit_code::ExitCode,
     ui::{AppState, UiIface},
 };

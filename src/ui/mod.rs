@@ -1,6 +1,8 @@
+mod feature;
 mod main_menu;
+mod release;
 
-use std::path::Path;
+use std::time::Duration;
 
 use ratatui::{
     Frame,
@@ -10,12 +12,20 @@ use ratatui::{
     widgets::{Block, Borders, Paragraph},
 };
 
-use crate::{git::GitWrapper, ui::main_menu::MainMenu};
+use crate::ui::{
+    feature::{FeatureList, finish::FeatureFinish, start::FeatureStart},
+    main_menu::MainMenu,
+    release::{ReleaseList, finish::ReleaseFinish, start::ReleaseStart},
+};
 
 pub enum AppState {
     MainMenu,
-    Feature,
-    Release,
+    FeatureList,
+    FeatureStart,
+    FeatureFinish,
+    ReleaseList,
+    ReleaseStart,
+    ReleaseFinish,
     Hotfix,
     Bugfix,
 }
@@ -24,8 +34,10 @@ impl AppState {
     fn try_from(value: &str) -> Option<Self> {
         match value {
             "MainMenu" => Some(AppState::MainMenu),
-            "Feature" => Some(AppState::Feature),
-            "Release" => Some(AppState::Release),
+            "Feature" => Some(AppState::FeatureList),
+            "FeatureStart" => Some(AppState::FeatureStart),
+            "FeatureFinish" => Some(AppState::FeatureFinish),
+            "Release" => Some(AppState::ReleaseList),
             "Hotfix" => Some(AppState::Hotfix),
             "Bugfix" => Some(AppState::Bugfix),
             _ => None,
@@ -67,14 +79,21 @@ pub fn main_loop() -> color_eyre::Result<()> {
         loop {
             terminal.draw(|frame| render(frame, &mut app))?;
 
-            if let Some(key) = event::read()?.as_key_press_event() {
-                match app.state {
-                    AppState::MainMenu => {
-                        if let Some(val) = app.page.handle_input(key.code) {
-                            app.state = val;
+            if event::poll(Duration::from_millis(250))? {
+                if let Some(key) = event::read()?.as_key_press_event() {
+                    if let Some(next) = app.page.handle_input(key.code) {
+                        app.state = next;
+                        match app.state {
+                            AppState::MainMenu => app.page = Box::new(MainMenu::new()),
+                            AppState::FeatureList => app.page = Box::new(FeatureList::new()),
+                            AppState::FeatureStart => app.page = Box::new(FeatureStart::new()),
+                            AppState::FeatureFinish => app.page = Box::new(FeatureFinish::new()),
+                            AppState::ReleaseList => app.page = Box::new(ReleaseList::new()),
+                            AppState::ReleaseStart => app.page = Box::new(ReleaseStart::new()),
+                            AppState::ReleaseFinish => app.page = Box::new(ReleaseFinish::new()),
+                            _ => (),
                         }
                     }
-                    _ => (),
                 }
             }
         }
@@ -105,21 +124,14 @@ fn render(frame: &mut Frame, app: &mut App) {
 
     let [_, centered_body, _] = body_area.layout(&horizontal);
 
-    // 👇 crear bloque con borde
     let block = Block::default().borders(Borders::ALL);
 
-    // 👇 renderizar el borde
     frame.render_widget(block, centered_body);
 
-    // 👇 obtener el área interna del bloque (sin bordes)
     let inner = centered_body.inner(Margin {
         vertical: 1,
         horizontal: 1,
     });
 
-    // pasar área interna a tu render
-    match app.state {
-        AppState::MainMenu => app.page.render(header_area, inner, footer_area, frame),
-        _ => (),
-    }
+    app.page.render(header_area, inner, footer_area, frame)
 }
