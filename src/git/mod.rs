@@ -167,6 +167,20 @@ impl GitWrapper {
         Ok(())
     }
 
+    pub fn push_tags(&self) -> Result<(), GitError> {
+        let res = Self::run_git_command(
+            ["push".to_string(), "--tags".to_string()],
+            &self.path,
+            false,
+        )
+        .unwrap();
+        if res.status != 0 {
+            return Err(GitError::PushTagsFailed);
+        }
+
+        Ok(())
+    }
+
     pub fn create_branch(&self, branch: &String) -> Result<(), GitError> {
         let res = Self::run_git_command(["checkout", "-b", branch], &self.path, false).unwrap();
         if res.status != 0 {
@@ -273,6 +287,15 @@ impl GitWrapper {
             return Err(GitError::CommitFailed {
                 branch: self.get_branch().unwrap(),
             });
+        }
+
+        Ok(())
+    }
+
+    pub fn tag(&self, name: &String) -> Result<(), GitError> {
+        let res = Self::run_git_command(["tag", name], &self.path, false).unwrap();
+        if res.status != 0 {
+            return Err(GitError::TagFailed { tag: name.clone() });
         }
 
         Ok(())

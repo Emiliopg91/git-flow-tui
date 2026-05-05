@@ -9,10 +9,12 @@ pub enum GitError {
     CheckoutFailed { branch: String },
     PullFailed { branch: String },
     PushFailed { branch: String },
+    PushTagsFailed,
     BranchFailed { branch: String },
     BranchDeletionFailed { branch: String },
     ListBranchFailed,
     CommitFailed { branch: String },
+    TagFailed { tag: String },
 }
 
 impl fmt::Display for GitError {
@@ -37,6 +39,9 @@ impl fmt::Display for GitError {
             GitError::PushFailed { branch } => {
                 write!(f, "Could not push {} branch to remote.", branch)
             }
+            GitError::PushTagsFailed => {
+                write!(f, "Could not push tags")
+            }
             GitError::BranchFailed { branch } => {
                 write!(f, "Could not create {} branch.", branch)
             }
@@ -48,6 +53,9 @@ impl fmt::Display for GitError {
             }
             GitError::CommitFailed { branch } => {
                 write!(f, "Could not commit local branch {}.", branch)
+            }
+            GitError::TagFailed { tag } => {
+                write!(f, "Could not create tag {}.", tag)
             }
         }
     }

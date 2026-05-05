@@ -70,10 +70,16 @@ pub fn release_finish(name: &String, sender: Sender<String>) -> Result<(), GitEr
         .unwrap();
     git.merge(&branch).unwrap();
 
+    sender.send(format!("  Creating tag {}...", name)).unwrap();
+    git.tag(&name).unwrap();
+
+    sender.send(format!("  Pushing tags...")).unwrap();
+    git.push_tags().unwrap();
+
     sender
         .send("  Creating commit for merge".to_string())
         .unwrap();
-    git.commit_empty(&format!("Merge for request merge: {}", name))
+    git.commit_empty(&format!("Merge after {} release merge", name))
         .unwrap();
 
     sender

@@ -73,7 +73,7 @@ pub fn feature_finish(name: &String, sender: Sender<String>) -> Result<(), GitEr
     sender
         .send("  Creating commit for merge".to_string())
         .unwrap();
-    git.commit_empty(&format!("Merge for feature merge: {}", name))
+    git.commit_empty(&format!("Merge after {} feature merge", name))
         .unwrap();
 
     sender
