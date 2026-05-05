@@ -1,0 +1,17 @@
+# pack-refs with: peeled fully-peeled sorted 
+8d9592c9139e0decd92407546dcb1b1ad82e7c69 refs/heads/develop
+edba08a4b8eca057466318b34c2db70a8a97cb02 refs/heads/feature/prueba
+0485ee6260e4d0a7b64b8b4172c7989d1242a022 refs/heads/feature/prueba-7
+0485ee6260e4d0a7b64b8b4172c7989d1242a022 refs/heads/feature/prueba1
+edba08a4b8eca057466318b34c2db70a8a97cb02 refs/heads/feature/prueba2
+edba08a4b8eca057466318b34c2db70a8a97cb02 refs/heads/feature/prueba3
+edba08a4b8eca057466318b34c2db70a8a97cb02 refs/heads/feature/prueba4
+0485ee6260e4d0a7b64b8b4172c7989d1242a022 refs/heads/feature/prueba5
+0485ee6260e4d0a7b64b8b4172c7989d1242a022 refs/heads/feature/prueba6
+8d9592c9139e0decd92407546dcb1b1ad82e7c69 refs/heads/feature/pruebasss
+8d9592c9139e0decd92407546dcb1b1ad82e7c69 refs/heads/master
+0485ee6260e4d0a7b64b8b4172c7989d1242a022 refs/heads/release/1.0.0
+157e8cbfb02afd9f96388cfa2bda8da030bd3e39 refs/heads/release/1.0.1
+19d020d587bc3c50a46533670638a01c81be425c refs/heads/release/1.0.2
+8d9592c9139e0decd92407546dcb1b1ad82e7c69 refs/heads/release/1.2.0
+8d9592c9139e0decd92407546dcb1b1ad82e7c69 refs/heads/release/asdfa

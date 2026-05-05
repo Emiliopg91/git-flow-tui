@@ -12,6 +12,7 @@ pub enum GitError {
     BranchFailed { branch: String },
     BranchDeletionFailed { branch: String },
     ListBranchFailed,
+    CommitFailed { branch: String },
 }
 
 impl fmt::Display for GitError {
@@ -44,6 +45,9 @@ impl fmt::Display for GitError {
             }
             GitError::BranchDeletionFailed { branch } => {
                 write!(f, "Could not delete local branch {}.", branch)
+            }
+            GitError::CommitFailed { branch } => {
+                write!(f, "Could not commit local branch {}.", branch)
             }
         }
     }

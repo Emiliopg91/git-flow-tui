@@ -1,6 +1,7 @@
 mod feature;
 mod main_menu;
 mod release;
+mod widgets;
 
 use std::time::Duration;
 

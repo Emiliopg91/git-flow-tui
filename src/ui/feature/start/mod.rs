@@ -5,8 +5,11 @@ use std::{
 
 use crate::{
     git::GitWrapper,
-    logic::feature_start,
-    ui::{AppState, UiIface},
+    logic::feature::feature_start,
+    ui::{
+        AppState, UiIface,
+        widgets::text_input::{InputState, TextInput},
+    },
 };
 
 use ratatui::{
@@ -23,7 +26,7 @@ enum StartProcState {
 }
 
 pub struct FeatureStart {
-    name: String,
+    name: InputState,
     state: StartProcState,
     messages: Arc<Mutex<Vec<String>>>,
     worker: Option<JoinHandle<()>>,
@@ -34,7 +37,7 @@ pub struct FeatureStart {
 impl FeatureStart {
     pub fn new() -> Self {
         Self {
-            name: "".to_string(),
+            name: InputState::new(&"".to_string()),
             state: StartProcState::EnterName,
             messages: Arc::new(Mutex::new(Vec::new())),
             worker: None,
@@ -67,9 +70,7 @@ impl UiIface for FeatureStart {
                     final_text.push_str("\n");
                 }
 
-                final_text.push_str(&format!("Enter feature name: {}_", self.name));
-
-                let footer_txt = if self.name.len() > 4 {
+                let footer_txt = if self.name.value.len() > 4 {
                     format!("Enter: continue | Esc: back")
                 } else {
                     "Esc: back".to_string()
@@ -103,6 +104,11 @@ impl UiIface for FeatureStart {
 
         let widget = Paragraph::new(final_text);
         frame.render_widget(widget, body);
+
+        if self.state == StartProcState::EnterName {
+            let text_input = TextInput::new(&"Enter release name".to_string());
+            frame.render_stateful_widget(text_input, body, &mut self.name);
+        }
     }
 
     fn handle_input(&mut self, key: KeyCode) -> Option<AppState> {
@@ -118,7 +124,7 @@ impl UiIface for FeatureStart {
                 if self.state == StartProcState::EnterName {
                     let features = GitWrapper::global().lock().unwrap().get_features().unwrap();
 
-                    if features.contains(&self.name) {
+                    if features.contains(&self.name.value) {
                         let mut msgs = self.messages.lock().unwrap();
 
                         let msg = "Feature already exists".to_string();
@@ -126,7 +132,7 @@ impl UiIface for FeatureStart {
                             msgs.push(msg);
                         }
 
-                        self.name.clear();
+                        self.name.value.clear();
                     } else {
                         let (tx, rx) = mpsc::channel();
                         let tx_err = tx.clone();
@@ -134,7 +140,7 @@ impl UiIface for FeatureStart {
                         self.tx = Some(tx.clone());
                         self.rx = Some(rx);
 
-                        let name = self.name.clone();
+                        let name = self.name.value.clone();
                         self.worker = Some(thread::spawn(move || match feature_start(&name, tx) {
                             Err(e) => tx_err.send(format!("{}", e)).unwrap(),
                             Ok(()) => (),
@@ -148,15 +154,15 @@ impl UiIface for FeatureStart {
             KeyCode::Char(c) => {
                 if self.state == StartProcState::EnterName {
                     if c.is_ascii_alphanumeric() || c == '-' {
-                        self.name.push(c);
+                        self.name.value.push(c);
                     }
                 }
             }
 
             KeyCode::Backspace => {
                 if self.state == StartProcState::EnterName {
-                    if self.name.len() > 0 {
-                        self.name.pop();
+                    if self.name.value.len() > 0 {
+                        self.name.value.pop();
                     }
                 }
             }

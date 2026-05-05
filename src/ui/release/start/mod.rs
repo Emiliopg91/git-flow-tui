@@ -5,8 +5,11 @@ use std::{
 
 use crate::{
     git::GitWrapper,
-    logic::{feature_start, release_start},
-    ui::{AppState, UiIface},
+    logic::release::release_start,
+    ui::{
+        AppState, UiIface,
+        widgets::text_input::{InputState, TextInput},
+    },
 };
 
 use ratatui::{
@@ -23,7 +26,7 @@ enum StartProcState {
 }
 
 pub struct ReleaseStart {
-    name: String,
+    input_txt: InputState,
     state: StartProcState,
     messages: Arc<Mutex<Vec<String>>>,
     worker: Option<JoinHandle<()>>,
@@ -34,7 +37,7 @@ pub struct ReleaseStart {
 impl ReleaseStart {
     pub fn new() -> Self {
         Self {
-            name: "".to_string(),
+            input_txt: InputState::new(&"".to_string()),
             state: StartProcState::EnterName,
             messages: Arc::new(Mutex::new(Vec::new())),
             worker: None,
@@ -67,9 +70,7 @@ impl UiIface for ReleaseStart {
                     final_text.push_str("\n");
                 }
 
-                final_text.push_str(&format!("Enter release name: {}_", self.name));
-
-                let footer_txt = if self.name.len() > 4 {
+                let footer_txt = if self.input_txt.value.len() > 4 {
                     format!("Enter: continue | Esc: back")
                 } else {
                     "Esc: back".to_string()
@@ -103,6 +104,11 @@ impl UiIface for ReleaseStart {
 
         let widget = Paragraph::new(final_text);
         frame.render_widget(widget, body);
+
+        if self.state == StartProcState::EnterName {
+            let text_input = TextInput::new(&"Enter release name".to_string());
+            frame.render_stateful_widget(text_input, body, &mut self.input_txt);
+        }
     }
 
     fn handle_input(&mut self, key: KeyCode) -> Option<AppState> {
@@ -122,7 +128,7 @@ impl UiIface for ReleaseStart {
                         .get_remote_releases()
                         .unwrap();
 
-                    if rem_releases.contains(&self.name) {
+                    if rem_releases.contains(&self.input_txt.value) {
                         let mut msgs = self.messages.lock().unwrap();
 
                         let msg = "Release already exists".to_string();
@@ -130,7 +136,7 @@ impl UiIface for ReleaseStart {
                             msgs.push(msg);
                         }
 
-                        self.name.clear();
+                        self.input_txt.value.clear();
                     } else {
                         let (tx, rx) = mpsc::channel();
                         let tx_err = tx.clone();
@@ -138,7 +144,7 @@ impl UiIface for ReleaseStart {
                         self.tx = Some(tx.clone());
                         self.rx = Some(rx);
 
-                        let name = self.name.clone();
+                        let name = self.input_txt.value.clone();
                         self.worker = Some(thread::spawn(move || match release_start(&name, tx) {
                             Err(e) => tx_err.send(format!("{}", e)).unwrap(),
                             Ok(()) => (),
@@ -152,15 +158,15 @@ impl UiIface for ReleaseStart {
             KeyCode::Char(c) => {
                 if self.state == StartProcState::EnterName {
                     if c.is_ascii_alphanumeric() || c == '-' || c == '.' {
-                        self.name.push(c);
+                        self.input_txt.value.push(c);
                     }
                 }
             }
 
             KeyCode::Backspace => {
                 if self.state == StartProcState::EnterName {
-                    if self.name.len() > 0 {
-                        self.name.pop();
+                    if self.input_txt.value.len() > 0 {
+                        self.input_txt.value.pop();
                     }
                 }
             }

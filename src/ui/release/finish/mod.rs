@@ -4,17 +4,18 @@ use std::{
 };
 
 use crate::{
-    logic::release_finish,
+    logic::release::release_finish,
     others::whiteboard::WHITEBOARD,
-    ui::{AppState, UiIface},
+    ui::{
+        AppState, UiIface,
+        widgets::multi_choice::{MultiChoice, MultiChoiceState},
+    },
 };
 
 use ratatui::{
     crossterm::event::KeyCode,
-    layout::{Constraint, Layout},
     prelude::{Frame, Rect},
-    style::{Color, Modifier},
-    widgets::{List, ListState, Paragraph},
+    widgets::Paragraph,
 };
 
 #[derive(PartialEq)]
@@ -26,7 +27,7 @@ enum FinishProcState {
 
 pub struct ReleaseFinish {
     name: String,
-    entry: ListState,
+    entry: MultiChoiceState,
     state: FinishProcState,
     messages: Arc<Mutex<Vec<String>>>,
     worker: Option<JoinHandle<()>>,
@@ -46,7 +47,7 @@ impl ReleaseFinish {
             .unwrap();
         Self {
             name: branch,
-            entry: ListState::default().with_selected(Some(0)),
+            entry: MultiChoiceState::new(),
             state: FinishProcState::Confirm,
             messages: Arc::new(Mutex::new(Vec::new())),
             worker: None,
@@ -71,24 +72,15 @@ impl UiIface for ReleaseFinish {
 
         match self.state {
             FinishProcState::Confirm => {
-                let layout_fl = Layout::vertical([Constraint::Length(1), Constraint::Length(2)]);
-                let [question_area, answer_area] = body.layout(&layout_fl);
+                let widget = MultiChoice::new(
+                    &format!("Are you sure you want to finish '{}' release?", self.name),
+                    ["No".to_string(), "Yes".to_string()].to_vec(),
+                );
 
-                let question_widget = Paragraph::new(format!(
-                    "Are you sure you want to finish '{}' release?",
-                    self.name
-                ));
-                frame.render_widget(question_widget, question_area);
-
-                let list = List::new(["No".to_string(), "Yes".to_string()])
-                    .style(Color::White)
-                    .highlight_style(Modifier::REVERSED)
-                    .highlight_symbol(" ");
-
-                frame.render_stateful_widget(list, answer_area, &mut self.entry);
+                frame.render_stateful_widget(widget, body, &mut self.entry);
 
                 self.set_text(
-                    "Up/Down: navigate | Enter: select | Esc: back".to_string(),
+                    "Left/Right: navigate | Enter: select | Esc: back".to_string(),
                     footer,
                     frame,
                 );
@@ -132,34 +124,32 @@ impl UiIface for ReleaseFinish {
 
             KeyCode::Enter => {
                 if self.state == FinishProcState::Confirm {
-                    if let Some(selected) = self.entry.selected() {
-                        if selected == 0 {
-                            return Some(AppState::ReleaseList);
-                        } else {
-                            let (tx, rx) = mpsc::channel();
-                            let tx_err = tx.clone();
+                    if self.entry.selected() == 0 {
+                        return Some(AppState::ReleaseList);
+                    } else {
+                        let (tx, rx) = mpsc::channel();
+                        let tx_err = tx.clone();
 
-                            self.tx = Some(tx.clone());
-                            self.rx = Some(rx);
+                        self.tx = Some(tx.clone());
+                        self.rx = Some(rx);
 
-                            let name = self.name.clone();
-                            self.worker =
-                                Some(thread::spawn(move || match release_finish(&name, tx) {
-                                    Err(e) => tx_err.send(format!("{}", e)).unwrap(),
-                                    Ok(()) => (),
-                                }));
+                        let name = self.name.clone();
+                        self.worker =
+                            Some(thread::spawn(move || match release_finish(&name, tx) {
+                                Err(e) => tx_err.send(format!("{}", e)).unwrap(),
+                                Ok(()) => (),
+                            }));
 
-                            self.state = FinishProcState::Finishing;
-                        }
+                        self.state = FinishProcState::Finishing;
                     }
                 }
             }
-            KeyCode::Up => {
+            KeyCode::Left => {
                 if self.state == FinishProcState::Confirm {
                     self.entry.select_previous()
                 }
             }
-            KeyCode::Down => {
+            KeyCode::Right => {
                 if self.state == FinishProcState::Confirm {
                     self.entry.select_next()
                 }

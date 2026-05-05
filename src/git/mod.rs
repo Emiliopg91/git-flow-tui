@@ -254,4 +254,27 @@ impl GitWrapper {
             })
             .collect())
     }
+
+    pub fn commit(&self, msg: &String) -> Result<(), GitError> {
+        let res = Self::run_git_command(["commit", "-m", msg], &self.path, false).unwrap();
+        if res.status != 0 {
+            return Err(GitError::CommitFailed {
+                branch: self.get_branch().unwrap(),
+            });
+        }
+
+        Ok(())
+    }
+
+    pub fn commit_empty(&self, msg: &String) -> Result<(), GitError> {
+        let res = Self::run_git_command(["commit", "--allow-empty", "-m", msg], &self.path, false)
+            .unwrap();
+        if res.status != 0 {
+            return Err(GitError::CommitFailed {
+                branch: self.get_branch().unwrap(),
+            });
+        }
+
+        Ok(())
+    }
 }
