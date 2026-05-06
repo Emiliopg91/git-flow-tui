@@ -42,7 +42,7 @@ pub struct ReleaseStart {
 impl ReleaseStart {
     pub fn new() -> Self {
         Self {
-            input_txt: InputState::new(&"".to_string()),
+            input_txt: InputState::new(""),
             state: StartProcState::Fetching,
             messages: Arc::new(Mutex::new(
                 ["Fetching from remotes...".to_string()].to_vec(),
@@ -77,7 +77,7 @@ impl UiIface for ReleaseStart {
         match self.state {
             StartProcState::EnterName => {
                 let footer_txt = if self.input_txt.value.len() > 4 {
-                    format!("Enter: continue | Esc: back")
+                    "Enter: continue | Esc: back".to_string()
                 } else {
                     "Esc: back".to_string()
                 };
@@ -94,10 +94,10 @@ impl UiIface for ReleaseStart {
         frame.render_widget(widget, msg_area);
 
         if self.state == StartProcState::EnterName {
-            let text_input = TextInput::new(&"Enter release name".to_string());
+            let text_input = TextInput::new("Enter release name");
             frame.render_stateful_widget(text_input, input_area, &mut self.input_txt);
             if let Some(popup_message) = &self.popup_message {
-                let popup = Popup::new(&"Error".to_string(), popup_message);
+                let popup = Popup::new("Error", popup_message);
                 frame.render_widget(popup, body);
             }
         }
@@ -123,12 +123,11 @@ impl UiIface for ReleaseStart {
                 }
             }
             StartProcState::Fetching => {
-                if let Ok(git) = GitWrapper::global().lock() {
-                    if let Ok(_) = git.fetch(true, true) {
+                if let Ok(git) = GitWrapper::global().lock()
+                    && git.fetch(true, true).is_ok() {
                         self.state = StartProcState::EnterName;
                         return;
                     }
-                }
 
                 messages.push("Could not fetch from remote".to_string());
                 self.state = StartProcState::Finished;
@@ -152,8 +151,8 @@ impl UiIface for ReleaseStart {
                 }
             }
 
-            KeyCode::Enter => {
-                if self.state == StartProcState::EnterName {
+            KeyCode::Enter
+                if self.state == StartProcState::EnterName => {
                     let git = GitWrapper::global().lock().unwrap();
                     let releases = git.get_releases().unwrap();
                     let rem_releases = git.get_remote_releases().unwrap();
@@ -172,31 +171,23 @@ impl UiIface for ReleaseStart {
                         self.rx = Some(rx);
 
                         let name = self.input_txt.value.clone();
-                        self.worker = Some(thread::spawn(move || match release_start(&name, tx) {
-                            Err(e) => tx_err.send(format!("{}", e)).unwrap(),
-                            Ok(()) => (),
-                        }));
+                        self.worker = Some(thread::spawn(move || if let Err(e) = release_start(&name, tx) { tx_err.send(format!("{}", e)).unwrap() }));
 
                         self.state = StartProcState::Creating;
                     }
                 }
-            }
 
-            KeyCode::Char(c) => {
-                if self.state == StartProcState::EnterName {
-                    if c.is_ascii_alphanumeric() || c == '-' || c == '.' {
+            KeyCode::Char(c)
+                if self.state == StartProcState::EnterName
+                    && (c.is_ascii_alphanumeric() || c == '-' || c == '.') => {
                         self.input_txt.value.push(c);
                     }
-                }
-            }
 
-            KeyCode::Backspace => {
-                if self.state == StartProcState::EnterName {
-                    if self.input_txt.value.len() > 0 {
+            KeyCode::Backspace
+                if self.state == StartProcState::EnterName
+                    && !self.input_txt.value.is_empty() => {
                         self.input_txt.value.pop();
                     }
-                }
-            }
 
             _ => {}
         }

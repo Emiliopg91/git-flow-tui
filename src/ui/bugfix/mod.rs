@@ -54,9 +54,9 @@ impl UiIface for BugfixList {
             KeyCode::Up => self.state.select_previous(),
             KeyCode::Down => self.state.select_next(),
             KeyCode::Delete => {
-                if let Some(selected) = self.state.selected() {
-                    if let Some(list) = &self.list {
-                        if let Some(branch) = list.get(selected) {
+                if let Some(selected) = self.state.selected()
+                    && let Some(list) = &self.list
+                        && let Some(branch) = list.get(selected) {
                             WHITEBOARD
                                 .get()
                                 .unwrap()
@@ -65,8 +65,6 @@ impl UiIface for BugfixList {
                                 .insert("branch".to_string(), branch.clone());
                             return Some(AppState::BugfixFinish);
                         }
-                    }
-                }
             }
             _ => (),
         }

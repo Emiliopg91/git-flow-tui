@@ -99,39 +99,35 @@ impl UiIface for FeatureFinish {
     }
 
     fn tick(&mut self) {
-        match self.state {
-            FinishProcState::Finishing => {
-                if let Some(rx) = &self.rx {
-                    let mut messages = self.messages.lock().unwrap();
-                    while let Ok(msg) = rx.try_recv() {
-                        messages.push(msg.clone());
-                    }
-                    drop(messages);
+        if self.state == FinishProcState::Finishing {
+            if let Some(rx) = &self.rx {
+                let mut messages = self.messages.lock().unwrap();
+                while let Ok(msg) = rx.try_recv() {
+                    messages.push(msg.clone());
                 }
-
-                let finished = self
-                    .worker
-                    .as_ref()
-                    .map(|t| t.is_finished())
-                    .unwrap_or(false);
-                if finished {
-                    self.state = FinishProcState::Finished
-                }
+                drop(messages);
             }
-            _ => (),
+
+            let finished = self
+                .worker
+                .as_ref()
+                .map(|t| t.is_finished())
+                .unwrap_or(false);
+            if finished {
+                self.state = FinishProcState::Finished
+            }
         }
     }
 
     fn handle_input(&mut self, key: KeyCode) -> Option<AppState> {
         match key {
-            KeyCode::Esc => {
-                if self.state != FinishProcState::Finishing {
+            KeyCode::Esc
+                if self.state != FinishProcState::Finishing => {
                     return Some(AppState::FeatureList);
                 }
-            }
 
-            KeyCode::Enter => {
-                if self.state == FinishProcState::Confirm {
+            KeyCode::Enter
+                if self.state == FinishProcState::Confirm => {
                     let selected = self.entry.selected();
                     if selected == 0 {
                         return Some(AppState::FeatureList);
@@ -144,25 +140,19 @@ impl UiIface for FeatureFinish {
 
                         let name = self.name.clone();
                         self.worker =
-                            Some(thread::spawn(move || match feature_finish(&name, tx) {
-                                Err(e) => tx_err.send(format!("{}", e)).unwrap(),
-                                Ok(()) => (),
-                            }));
+                            Some(thread::spawn(move || if let Err(e) = feature_finish(&name, tx) { tx_err.send(format!("{}", e)).unwrap() }));
 
                         self.state = FinishProcState::Finishing;
                     }
                 }
-            }
-            KeyCode::Left => {
-                if self.state == FinishProcState::Confirm {
+            KeyCode::Left
+                if self.state == FinishProcState::Confirm => {
                     self.entry.select_previous()
                 }
-            }
-            KeyCode::Right => {
-                if self.state == FinishProcState::Confirm {
+            KeyCode::Right
+                if self.state == FinishProcState::Confirm => {
                     self.entry.select_next()
                 }
-            }
 
             _ => {}
         }

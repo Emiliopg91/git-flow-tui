@@ -5,9 +5,9 @@ pub struct InputState {
 }
 
 impl InputState {
-    pub fn new(value: &String) -> Self {
+    pub fn new(value: &str) -> Self {
         Self {
-            value: value.clone(),
+            value: value.to_owned(),
         }
     }
 }
@@ -17,9 +17,9 @@ pub struct TextInput {
 }
 
 impl TextInput {
-    pub fn new(title: &String) -> Self {
+    pub fn new(title: &str) -> Self {
         Self {
-            title: title.clone(),
+            title: title.to_owned(),
         }
     }
 }

@@ -15,7 +15,7 @@ pub fn release_start(name: &String, sender: Sender<String>) -> Result<(), GitErr
 
     if git.get_branch()? != "develop" {
         send("  Checking out develop branch...");
-        git.checkout(&"develop".to_string())?;
+        git.checkout("develop")?;
     }
 
     send("  Syncing changes from remote...");
@@ -54,13 +54,13 @@ pub fn release_finish(name: &str, sender: Sender<String>) -> Result<(), GitError
     git.push()?;
 
     send("  Checking out master branch...");
-    git.checkout(&"master".to_string())?;
+    git.checkout("master")?;
 
     send(&format!("  Merging {branch} to master..."));
     git.merge(&branch)?;
 
     send(&format!("  Creating tag {name}..."));
-    git.tag(&name.to_string())?;
+    git.tag(name)?;
 
     send("  Pushing tags...");
     git.push_tags()?;
@@ -72,10 +72,10 @@ pub fn release_finish(name: &str, sender: Sender<String>) -> Result<(), GitError
     git.push()?;
 
     send("  Checking out develop branch...");
-    git.checkout(&"develop".to_string())?;
+    git.checkout("develop")?;
 
     send("  Merging master to develop...");
-    git.merge(&"master".to_string())?;
+    git.merge("master")?;
 
     send("  Pushing develop to remote...");
     git.push()?;

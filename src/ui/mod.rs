@@ -85,9 +85,9 @@ pub fn main_loop() -> color_eyre::Result<()> {
     let mut app = App::new();
 
     ratatui::run(|terminal| loop {
-        if event::poll(Duration::from_millis(50))? {
-            if let Some(key) = event::read()?.as_key_press_event() {
-                if let Some(next) = app.page.handle_input(key.code) {
+        if event::poll(Duration::from_millis(50))?
+            && let Some(key) = event::read()?.as_key_press_event()
+                && let Some(next) = app.page.handle_input(key.code) {
                     app.state = next;
                     match app.state {
                         AppState::MainMenu => app.page = Box::new(MainMenu::new()),
@@ -102,8 +102,6 @@ pub fn main_loop() -> color_eyre::Result<()> {
                         AppState::BugfixFinish => app.page = Box::new(BugfixFinish::new()),
                     }
                 }
-            }
-        }
 
         app.page.tick();
 

@@ -6,29 +6,23 @@ pub fn bugfix_start(name: &String, sender: Sender<String>) -> Result<(), GitErro
     let branch = format!("bugfix/{}", name);
     let git = GitWrapper::global().lock().unwrap();
 
-    sender
-        .send(format!("Starting creation of bugfix {}...", name))
-        .unwrap();
+    let send = |msg: &str| {
+        let _ = sender.send(msg.into());
+    };
 
-    if git.get_branch().unwrap() != "develop" {
-        sender
-            .send("  Checking out develop branch...".to_string())
-            .unwrap();
-        git.checkout(&"develop".to_string())?;
+    send(&format!("Starting creation of bugfix {}...", name));
+
+    if git.get_branch()? != "develop" {
+        send("  Checking out develop branch...");
+        git.checkout("develop")?;
     }
-    sender
-        .send("  Syncing changes from remote...".to_string())
-        .unwrap();
-    git.pull().unwrap();
+    send("  Syncing changes from remote...");
+    git.pull()?;
 
-    sender
-        .send(format!("  Creating branch {}...", branch))
-        .unwrap();
+    send(&format!("  Creating branch {}...", branch));
     git.create_branch(&branch)?;
 
-    sender
-        .send("Bugfix started succesfully".to_string())
-        .unwrap();
+    send("Bugfix started succesfully");
 
     Ok(())
 }
@@ -37,58 +31,41 @@ pub fn bugfix_finish(name: &String, sender: Sender<String>) -> Result<(), GitErr
     let branch = format!("bugfix/{}", name);
     let git = GitWrapper::global().lock().unwrap();
 
-    sender
-        .send(format!("Finishing bugfix {}...", name))
-        .unwrap();
+    let send = |msg: &str| {
+        let _ = sender.send(msg.into());
+    };
 
-    if git.get_branch().unwrap() != branch {
-        sender
-            .send(format!("  Checking out {} branch...", branch))
-            .unwrap();
-        git.checkout(&branch).unwrap();
+    send(&format!("Finishing bugfix {}...", name));
+
+    if git.get_branch()? != branch {
+        send(&format!("  Checking out {} branch...", branch));
+        git.checkout(&branch)?;
     }
 
-    if git.get_remote_branches().unwrap().contains(&branch) {
-        sender
-            .send("  Syncing changes from remote...".to_string())
-            .unwrap();
-        git.pull().unwrap();
+    if git.get_remote_branches()?.contains(&branch) {
+        send("  Syncing changes from remote...");
+        git.pull()?;
     }
 
-    sender
-        .send(format!("  Pushing {} to remote...", branch))
-        .unwrap();
-    git.push().unwrap();
+    send(&format!("  Pushing {} to remote...", branch));
+    git.push()?;
 
-    sender
-        .send("  Checking out develop branch...".to_string())
-        .unwrap();
-    git.checkout(&"develop".to_string()).unwrap();
+    send("  Checking out develop branch...");
+    git.checkout("develop")?;
 
-    sender
-        .send(format!("  Merging {} to develop...", branch))
-        .unwrap();
-    git.merge(&branch).unwrap();
+    send(&format!("  Merging {} to develop...", branch));
+    git.merge(&branch)?;
 
-    sender
-        .send("  Creating commit for merge".to_string())
-        .unwrap();
-    git.commit(&format!("Merge after {} bugfix merge", name))
-        .unwrap();
+    send("  Creating commit for merge");
+    git.commit(&format!("Merge after {} bugfix merge", name))?;
 
-    sender
-        .send("  Pushing develop to remote...".to_string())
-        .unwrap();
-    git.push().unwrap();
+    send("  Pushing develop to remote...");
+    git.push()?;
 
-    sender
-        .send(format!("  Deleting local {} branch...", branch))
-        .unwrap();
-    git.delete_branch(&branch).unwrap();
+    send(&format!("  Deleting local {} branch...", branch));
+    git.delete_branch(&branch)?;
 
-    sender
-        .send("Bugfix finished succesfully".to_string())
-        .unwrap();
+    send("Bugfix finished succesfully");
 
     Ok(())
 }

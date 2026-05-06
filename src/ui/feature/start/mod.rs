@@ -41,7 +41,7 @@ pub struct FeatureStart {
 impl FeatureStart {
     pub fn new() -> Self {
         Self {
-            name: InputState::new(&"".to_string()),
+            name: InputState::new(""),
             state: StartProcState::EnterName,
             messages: Arc::new(Mutex::new(Vec::new())),
             popup_message: None,
@@ -72,7 +72,7 @@ impl UiIface for FeatureStart {
         match self.state {
             StartProcState::EnterName => {
                 let footer_txt = if self.name.value.len() > 4 {
-                    format!("Enter: continue | Esc: back")
+                    "Enter: continue | Esc: back".to_string()
                 } else {
                     "Esc: back".to_string()
                 };
@@ -89,11 +89,11 @@ impl UiIface for FeatureStart {
         frame.render_widget(widget, msg_area);
 
         if self.state == StartProcState::EnterName {
-            let text_input = TextInput::new(&"Enter feature name".to_string());
+            let text_input = TextInput::new("Enter feature name");
             frame.render_stateful_widget(text_input, input_area, &mut self.name);
 
             if let Some(popup_message) = &self.popup_message {
-                let popup = Popup::new(&"Error".to_string(), popup_message);
+                let popup = Popup::new("Error", popup_message);
                 frame.render_widget(popup, body);
             }
         }
@@ -134,50 +134,44 @@ impl UiIface for FeatureStart {
                 }
             }
 
-            KeyCode::Enter => {
-                if self.state == StartProcState::EnterName {
-                    let git = GitWrapper::global().lock().unwrap();
-                    let features = git.get_features().unwrap();
-                    let rem_features = git.get_remote_features().unwrap();
-                    drop(git);
+            KeyCode::Enter if self.state == StartProcState::EnterName => {
+                let git = GitWrapper::global().lock().unwrap();
+                let features = git.get_features().unwrap();
+                let rem_features = git.get_remote_features().unwrap();
+                drop(git);
 
-                    if features.contains(&self.name.value)
-                        || rem_features.contains(&self.name.value)
-                    {
-                        self.popup_message = Some("Feature already exists".to_string());
-                        self.name.value.clear();
-                    } else {
-                        let (tx, rx) = mpsc::channel();
-                        let tx_err = tx.clone();
+                if features.contains(&self.name.value) || rem_features.contains(&self.name.value) {
+                    self.popup_message = Some("Feature already exists".to_string());
+                    self.name.value.clear();
+                } else {
+                    let (tx, rx) = mpsc::channel();
+                    let tx_err = tx.clone();
 
-                        self.tx = Some(tx.clone());
-                        self.rx = Some(rx);
+                    self.tx = Some(tx.clone());
+                    self.rx = Some(rx);
 
-                        let name = self.name.value.clone();
-                        self.worker = Some(thread::spawn(move || match feature_start(&name, tx) {
-                            Err(e) => tx_err.send(format!("{}", e)).unwrap(),
-                            Ok(()) => (),
-                        }));
+                    let name = self.name.value.clone();
+                    self.worker = Some(thread::spawn(move || {
+                        if let Err(e) = feature_start(&name, tx) {
+                            tx_err.send(format!("{}", e)).unwrap()
+                        }
+                    }));
 
-                        self.state = StartProcState::Creating;
-                    }
+                    self.state = StartProcState::Creating;
                 }
             }
 
-            KeyCode::Char(c) => {
-                if self.state == StartProcState::EnterName {
-                    if c.is_ascii_alphanumeric() || c == '-' {
-                        self.name.value.push(c);
-                    }
-                }
+            KeyCode::Char(c)
+                if self.state == StartProcState::EnterName
+                    && (c.is_ascii_alphanumeric() || c == '-') =>
+            {
+                self.name.value.push(c);
             }
 
-            KeyCode::Backspace => {
-                if self.state == StartProcState::EnterName {
-                    if self.name.value.len() > 0 {
-                        self.name.value.pop();
-                    }
-                }
+            KeyCode::Backspace
+                if self.state == StartProcState::EnterName && !self.name.value.is_empty() =>
+            {
+                self.name.value.pop();
             }
 
             _ => {}

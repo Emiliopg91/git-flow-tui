@@ -40,7 +40,7 @@ impl UiIface for ReleaseList {
 
         self.set_text("Release management".to_string(), header, frame);
 
-        if list.len() == 0 {
+        if list.is_empty() {
             self.set_text(
                 "+: start new release | Esc: back".to_string(),
                 footer,
@@ -54,17 +54,16 @@ impl UiIface for ReleaseList {
     fn handle_input(&mut self, key: KeyCode) -> Option<AppState> {
         match key {
             KeyCode::Esc => return Some(AppState::MainMenu),
-            KeyCode::Char('+') => {
-                if self.list.clone().unwrap().len() == 0 {
+            KeyCode::Char('+')
+                if self.list.clone().unwrap().is_empty() => {
                     return Some(AppState::ReleaseStart);
                 }
-            }
             KeyCode::Up => self.state.select_previous(),
             KeyCode::Down => self.state.select_next(),
             KeyCode::Delete => {
-                if let Some(selected) = self.state.selected() {
-                    if let Some(list) = &self.list {
-                        if let Some(branch) = list.get(selected) {
+                if let Some(selected) = self.state.selected()
+                    && let Some(list) = &self.list
+                        && let Some(branch) = list.get(selected) {
                             WHITEBOARD
                                 .get()
                                 .unwrap()
@@ -73,8 +72,6 @@ impl UiIface for ReleaseList {
                                 .insert("branch".to_string(), branch.clone());
                             return Some(AppState::ReleaseFinish);
                         }
-                    }
-                }
             }
             _ => (),
         }

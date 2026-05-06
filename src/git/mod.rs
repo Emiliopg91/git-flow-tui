@@ -80,41 +80,35 @@ impl GitWrapper {
 
     pub fn has_changes(&self) -> Result<bool, GitError> {
         Ok(
-            Self::run_git_command(["status", "--porcelain"], &self.path, true)
-                .map_err(|e| GitError::from(e))?
+            !Self::run_git_command(["status", "--porcelain"], &self.path, true)?
                 .stdout
                 .lines()
                 .map(|s| s.to_string())
                 .collect::<Vec<String>>()
-                .len()
-                > 0,
+                .is_empty(),
         )
     }
 
     pub fn get_branch(&self) -> Result<String, GitError> {
-        Ok(
-            Self::run_git_command(["rev-parse", "--abbrev-ref", "HEAD"], &self.path, true)
-                .map_err(|e| GitError::from(e))?
-                .stdout,
-        )
+        Ok(Self::run_git_command(["rev-parse", "--abbrev-ref", "HEAD"], &self.path, true)?.stdout)
     }
 
-    pub fn checkout(&self, branch: &String) -> Result<(), GitError> {
+    pub fn checkout(&self, branch: &str) -> Result<(), GitError> {
         let res = Self::run_git_command(["checkout", branch], &self.path, false)?;
         if res.status != 0 {
             return Err(GitError::CheckoutFailed {
-                branch: branch.clone(),
+                branch: branch.to_owned(),
             });
         }
 
         Ok(())
     }
 
-    pub fn merge(&self, branch: &String) -> Result<(), GitError> {
+    pub fn merge(&self, branch: &str) -> Result<(), GitError> {
         let res = Self::run_git_command(["merge", branch], &self.path, false)?;
         if res.status != 0 {
             return Err(GitError::MergeFailed {
-                branch: branch.clone(),
+                branch: branch.to_owned(),
             });
         }
 
@@ -165,7 +159,7 @@ impl GitWrapper {
         Ok(())
     }
 
-    pub fn create_branch(&self, branch: &String) -> Result<(), GitError> {
+    pub fn create_branch(&self, branch: &str) -> Result<(), GitError> {
         let res = Self::run_git_command(["checkout", "-b", branch], &self.path, false)?;
         if res.status != 0 {
             return Err(GitError::BranchFailed {
@@ -176,7 +170,7 @@ impl GitWrapper {
         Ok(())
     }
 
-    pub fn delete_branch(&self, branch: &String) -> Result<(), GitError> {
+    pub fn delete_branch(&self, branch: &str) -> Result<(), GitError> {
         let res = Self::run_git_command(["branch", "-D", branch], &self.path, false)?;
         if res.status != 0 {
             return Err(GitError::BranchDeletionFailed {
@@ -205,15 +199,13 @@ impl GitWrapper {
         Ok(res.stdout.lines().map(|s| s.to_string()).collect())
     }
 
-    fn filter_local_branches(&self, branches: &Vec<String>, tpe: &String) -> Vec<String> {
+    fn filter_local_branches(&self, branches: &[String], tpe: &String) -> Vec<String> {
         branches
             .iter()
             .filter_map(|s| {
                 let cleaned = s.trim().trim_start_matches('*').trim();
 
-                let mut parts = cleaned.splitn(2, '/');
-                let kind = parts.next()?;
-                let name = parts.next()?;
+                let (kind, name) = cleaned.split_once('/')?;
 
                 if kind == tpe {
                     Some(name.to_string())
@@ -239,7 +231,7 @@ impl GitWrapper {
         Ok(self.filter_local_branches(&branches, &"bugfix".to_string()))
     }
 
-    fn filter_remote_branches(&self, branches: &Vec<String>, tpe: &String) -> Vec<String> {
+    fn filter_remote_branches(&self, branches: &[String], tpe: &String) -> Vec<String> {
         branches
             .iter()
             .filter_map(|s| {
@@ -275,7 +267,7 @@ impl GitWrapper {
         Ok(self.filter_remote_branches(&branches, &"bugfix".to_string()))
     }
 
-    pub fn commit(&self, msg: &String) -> Result<(), GitError> {
+    pub fn commit(&self, msg: &str) -> Result<(), GitError> {
         let res = Self::run_git_command(["commit", "--allow-empty", "-m", msg], &self.path, false)?;
         if res.status != 0 {
             return Err(GitError::CommitFailed {
@@ -286,10 +278,12 @@ impl GitWrapper {
         Ok(())
     }
 
-    pub fn tag(&self, name: &String) -> Result<(), GitError> {
+    pub fn tag(&self, name: &str) -> Result<(), GitError> {
         let res = Self::run_git_command(["tag", name], &self.path, false)?;
         if res.status != 0 {
-            return Err(GitError::TagFailed { tag: name.clone() });
+            return Err(GitError::TagFailed {
+                tag: name.to_owned(),
+            });
         }
 
         Ok(())

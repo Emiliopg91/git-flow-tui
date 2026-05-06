@@ -42,9 +42,9 @@ pub struct MultiChoice {
 }
 
 impl MultiChoice {
-    pub fn new(title: &String, options: Vec<String>) -> Self {
+    pub fn new(title: &str, options: Vec<String>) -> Self {
         Self {
-            title: title.clone(),
+            title: title.to_owned(),
             options: options.clone(),
         }
     }

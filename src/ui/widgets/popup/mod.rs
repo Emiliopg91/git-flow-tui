@@ -9,10 +9,10 @@ pub struct Popup {
 }
 
 impl Popup {
-    pub fn new(title: &String, content: &String) -> Self {
+    pub fn new(title: &str, content: &str) -> Self {
         Self {
-            title: title.clone(),
-            content: content.clone(),
+            title: title.to_owned(),
+            content: content.to_owned(),
         }
     }
 }
