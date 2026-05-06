@@ -10,5 +10,6 @@ ratatui = "0.30.0"
 [profile.release]
 lto = "fat"
 codegen-units = 1
-strip = true
+strip = "symbols"
+panic = "abort"
 opt-level = 3
