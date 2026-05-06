@@ -1,14 +1,14 @@
 use std::{
-    sync::{Arc, Mutex, mpsc},
+    sync::{mpsc, Arc, Mutex},
     thread::{self, JoinHandle},
 };
 
 use crate::{
-    logic::feature::feature_finish,
+    logic::bugfix::bugfix_finish,
     others::whiteboard::WHITEBOARD,
     ui::{
-        AppState, UiIface,
         widgets::multi_choice::{MultiChoice, MultiChoiceState},
+        AppState, UiIface,
     },
 };
 
@@ -25,7 +25,7 @@ enum FinishProcState {
     Finished,
 }
 
-pub struct FeatureFinish {
+pub struct BugfixFinish {
     name: String,
     entry: MultiChoiceState,
     state: FinishProcState,
@@ -35,7 +35,7 @@ pub struct FeatureFinish {
     tx: Option<mpsc::Sender<String>>,
 }
 
-impl FeatureFinish {
+impl BugfixFinish {
     pub fn new() -> Self {
         let branch = WHITEBOARD
             .get()
@@ -57,9 +57,9 @@ impl FeatureFinish {
     }
 }
 
-impl UiIface for FeatureFinish {
+impl UiIface for BugfixFinish {
     fn render(&mut self, header: Rect, body: Rect, footer: Rect, frame: &mut Frame) {
-        self.set_text("Finish feature".to_string(), header, frame);
+        self.set_text("Finish bugfix".to_string(), header, frame);
 
         let messages = self.messages.lock().unwrap();
         let text = messages
@@ -74,7 +74,7 @@ impl UiIface for FeatureFinish {
         match self.state {
             FinishProcState::Confirm => {
                 let widget = MultiChoice::new(
-                    &format!("Are you sure you want to finish '{}' feature?", self.name),
+                    &format!("Are you sure you want to finish '{}' bugfix?", self.name),
                     ["No".to_string(), "Yes".to_string()].to_vec(),
                 );
 
@@ -126,7 +126,7 @@ impl UiIface for FeatureFinish {
         match key {
             KeyCode::Esc => {
                 if self.state != FinishProcState::Finishing {
-                    return Some(AppState::FeatureList);
+                    return Some(AppState::BugfixList);
                 }
             }
 
@@ -134,7 +134,7 @@ impl UiIface for FeatureFinish {
                 if self.state == FinishProcState::Confirm {
                     let selected = self.entry.selected();
                     if selected == 0 {
-                        return Some(AppState::FeatureList);
+                        return Some(AppState::BugfixList);
                     } else {
                         let (tx, rx) = mpsc::channel();
                         let tx_err = tx.clone();
@@ -143,11 +143,10 @@ impl UiIface for FeatureFinish {
                         self.rx = Some(rx);
 
                         let name = self.name.clone();
-                        self.worker =
-                            Some(thread::spawn(move || match feature_finish(&name, tx) {
-                                Err(e) => tx_err.send(format!("{}", e)).unwrap(),
-                                Ok(()) => (),
-                            }));
+                        self.worker = Some(thread::spawn(move || match bugfix_finish(&name, tx) {
+                            Err(e) => tx_err.send(format!("{}", e)).unwrap(),
+                            Ok(()) => (),
+                        }));
 
                         self.state = FinishProcState::Finishing;
                     }

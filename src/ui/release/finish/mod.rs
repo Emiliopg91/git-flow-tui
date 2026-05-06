@@ -86,6 +86,20 @@ impl UiIface for ReleaseFinish {
                 );
             }
             FinishProcState::Finishing => {
+                let widget = Paragraph::new(text);
+                frame.render_widget(widget, body);
+            }
+            FinishProcState::Finished => {
+                let widget = Paragraph::new(text);
+                frame.render_widget(widget, body);
+                self.set_text("Esc: back".to_string(), footer, frame);
+            }
+        }
+    }
+
+    fn tick(&mut self) {
+        match self.state {
+            FinishProcState::Finishing => {
                 if let Some(rx) = &self.rx {
                     let mut messages = self.messages.lock().unwrap();
                     while let Ok(msg) = rx.try_recv() {
@@ -93,9 +107,6 @@ impl UiIface for ReleaseFinish {
                     }
                     drop(messages);
                 }
-
-                let widget = Paragraph::new(text);
-                frame.render_widget(widget, body);
 
                 let finished = self
                     .worker
@@ -106,11 +117,7 @@ impl UiIface for ReleaseFinish {
                     self.state = FinishProcState::Finished
                 }
             }
-            FinishProcState::Finished => {
-                let widget = Paragraph::new(text);
-                frame.render_widget(widget, body);
-                self.set_text("Esc: back".to_string(), footer, frame);
-            }
+            _ => (),
         }
     }
 

@@ -1,4 +1,4 @@
-use std::{collections::HashMap, env, path::PathBuf, process::exit};
+use std::{collections::HashMap, env, process::exit};
 
 use color_eyre::eyre::Result;
 
@@ -7,35 +7,14 @@ use crate::{
     others::{exit_code::ExitCode, whiteboard::WHITEBOARD},
     ui::main_loop,
 };
-use clap::Parser;
 
 mod git;
 mod logic;
 mod others;
 mod ui;
 
-#[derive(Parser, Debug)]
-#[command(author, version, about)]
-struct Args {
-    #[arg(short, long)]
-    repository: Option<PathBuf>,
-}
-
 fn main() -> Result<()> {
-    let args = Args::parse();
-
-    let cwd = env::current_dir()?;
-
-    let repo_path = match args.repository {
-        Some(repo) => {
-            if repo.is_absolute() {
-                repo
-            } else {
-                cwd.join(repo)
-            }
-        }
-        None => cwd,
-    };
+    let repo_path = env::current_dir()?;
     println!("Using repository {:?}", repo_path);
     GitWrapper::initialize(repo_path).unwrap_or_else(|e| {
         eprintln!("Error: {}", e);

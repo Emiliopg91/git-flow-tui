@@ -1,115 +1,90 @@
 use std::sync::mpsc::Sender;
 
-use crate::git::{GitWrapper, errors::GitError};
+use crate::git::{errors::GitError, GitWrapper};
 
 pub fn release_start(name: &String, sender: Sender<String>) -> Result<(), GitError> {
-    let branch = format!("release/{}", name);
+    let branch = format!("release/{name}");
+
+    let send = |msg: &str| {
+        let _ = sender.send(msg.into());
+    };
+
+    send(&format!("Starting creation of release {name}..."));
+
     let git = GitWrapper::global().lock().unwrap();
 
-    sender
-        .send(format!("Starting creation of release {}...", name))
-        .unwrap();
-
-    if git.get_branch().unwrap() != "develop" {
-        sender
-            .send("  Checking out develop branch...".to_string())
-            .unwrap();
-        git.checkout(&"develop".to_string()).unwrap();
+    if git.get_branch()? != "develop" {
+        send("  Checking out develop branch...");
+        git.checkout(&"develop".to_string())?;
     }
-    sender
-        .send("  Syncing changes from remote...".to_string())
-        .unwrap();
-    git.pull().unwrap();
 
-    sender
-        .send(format!("  Creating branch {}...", branch))
-        .unwrap();
+    send("  Syncing changes from remote...");
+    git.pull()?;
+
+    send(&format!("  Creating branch {branch}..."));
     git.create_branch(&branch)?;
 
-    sender
-        .send("Release started succesfully".to_string())
-        .unwrap();
+    send("Release started successfully");
 
     Ok(())
 }
 
-pub fn release_finish(name: &String, sender: Sender<String>) -> Result<(), GitError> {
-    let branch = format!("release/{}", name);
+pub fn release_finish(name: &str, sender: Sender<String>) -> Result<(), GitError> {
+    let branch = format!("release/{name}");
+
+    let send = |msg: &str| {
+        let _ = sender.send(msg.into());
+    };
+
+    send(&format!("Finishing release {name}..."));
+
     let git = GitWrapper::global().lock().unwrap();
 
-    sender
-        .send(format!("Finishing release {}...", name))
-        .unwrap();
-
-    if git.get_branch().unwrap() != branch {
-        sender
-            .send(format!("  Checking out {} branch...", branch))
-            .unwrap();
-        git.checkout(&branch).unwrap();
+    if git.get_branch()? != branch {
+        send(&format!("  Checking out {branch} branch..."));
+        git.checkout(&branch)?;
     }
 
-    if git.get_remote_branches().unwrap().contains(&branch) {
-        sender
-            .send("  Syncing changes from remote...".to_string())
-            .unwrap();
-        git.pull().unwrap();
+    if git.get_remote_branches()?.contains(&branch) {
+        send("  Syncing changes from remote...");
+        git.pull()?;
     }
 
-    sender
-        .send(format!("  Pushing {} to remote...", branch))
-        .unwrap();
-    git.push().unwrap();
+    send(&format!("  Pushing {branch} to remote..."));
+    git.push()?;
 
-    sender
-        .send("  Checking out master branch...".to_string())
-        .unwrap();
-    git.checkout(&"master".to_string()).unwrap();
+    send("  Checking out master branch...");
+    git.checkout(&"master".to_string())?;
 
-    sender
-        .send(format!("  Merging {} to master...", branch))
-        .unwrap();
-    git.merge(&branch).unwrap();
+    send(&format!("  Merging {branch} to master..."));
+    git.merge(&branch)?;
 
-    sender.send(format!("  Creating tag {}...", name)).unwrap();
-    git.tag(&name).unwrap();
+    send(&format!("  Creating tag {name}..."));
+    git.tag(&name.to_string())?;
 
-    sender.send(format!("  Pushing tags...")).unwrap();
-    git.push_tags().unwrap();
+    send("  Pushing tags...");
+    git.push_tags()?;
 
-    sender
-        .send("  Creating commit for merge".to_string())
-        .unwrap();
-    git.commit_empty(&format!("Merge after {} release merge", name))
-        .unwrap();
+    send("  Creating commit for merge");
+    git.commit(&format!("Merge after {name} release merge"))?;
 
-    sender
-        .send("  Pushing master to remote...".to_string())
-        .unwrap();
-    git.push().unwrap();
+    send("  Pushing master to remote...");
+    git.push()?;
 
-    sender
-        .send("  Checking out develop branch...".to_string())
-        .unwrap();
-    git.checkout(&"develop".to_string()).unwrap();
+    send("  Checking out develop branch...");
+    git.checkout(&"develop".to_string())?;
 
-    sender
-        .send(format!("  Merging master to develop..."))
-        .unwrap();
-    git.merge(&"master".to_string()).unwrap();
+    send("  Merging master to develop...");
+    git.merge(&"master".to_string())?;
 
-    sender
-        .send("  Pushing develop to remote...".to_string())
-        .unwrap();
-    git.push().unwrap();
+    send("  Pushing develop to remote...");
+    git.push()?;
 
-    sender
-        .send(format!("  Deleting local {} branch...", branch))
-        .unwrap();
-    git.delete_branch(&branch).unwrap();
+    // Limpieza
+    send(&format!("  Deleting local {branch} branch..."));
+    git.delete_branch(&branch)?;
 
-    sender
-        .send("Release finished succesfully".to_string())
-        .unwrap();
+    send("Release finished successfully");
 
     Ok(())
 }

@@ -16,6 +16,7 @@ pub struct GitWrapper {
 pub struct GitCmdResult {
     pub status: i32,
     pub stdout: String,
+    #[allow(dead_code)]
     pub stderr: String,
 }
 
@@ -27,13 +28,13 @@ impl GitWrapper {
     }
 
     pub fn initialize(path_buf: PathBuf) -> Result<(), GitError> {
-        if !fs::exists(&path_buf).unwrap() {
+        if !fs::exists(&path_buf)? {
             return Err(GitError::NotAGitRepository);
         }
 
         let path = path_buf.display().to_string();
 
-        let res = Self::run_git_command(["rev-parse", "--show-toplevel"], &path, false).unwrap();
+        let res = Self::run_git_command(["rev-parse", "--show-toplevel"], &path, false)?;
         if res.status != 0 {
             return Err(GitError::NotAGitRepository);
         }
@@ -45,11 +46,7 @@ impl GitWrapper {
         Ok(())
     }
 
-    fn run_git_command<I, S>(
-        args: I,
-        cwd: &String,
-        check: bool,
-    ) -> Result<GitCmdResult, std::io::Error>
+    fn run_git_command<I, S>(args: I, cwd: &String, check: bool) -> Result<GitCmdResult, GitError>
     where
         I: IntoIterator<Item = S>,
         S: AsRef<str>,
@@ -62,26 +59,16 @@ impl GitWrapper {
             .env("LANG", "C")
             .output()?;
 
-        let status = res.status.code().ok_or_else(|| {
-            std::io::Error::new(
-                std::io::ErrorKind::Other,
-                format!(
-                    "Command 'git {}' terminated without exit code",
-                    args_vec.join(" ")
-                ),
-            )
+        let status = res.status.code().ok_or_else(|| GitError::CommandFailed {
+            command: format!("git {}", args_vec.join(" ")),
+            code: -1,
         })?;
 
         if check && status != 0 {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                format!(
-                    "Command 'git {}' failed (exit code {}): {}",
-                    args_vec.join(" "),
-                    status,
-                    String::from_utf8_lossy(&res.stderr).trim()
-                ),
-            ));
+            return Err(GitError::CommandFailed {
+                command: format!("git {}", args_vec.join(" ")),
+                code: status,
+            });
         }
 
         Ok(GitCmdResult {
@@ -94,8 +81,7 @@ impl GitWrapper {
     pub fn has_changes(&self) -> Result<bool, GitError> {
         Ok(
             Self::run_git_command(["status", "--porcelain"], &self.path, true)
-                .map_err(|e| GitError::from(e))
-                .unwrap()
+                .map_err(|e| GitError::from(e))?
                 .stdout
                 .lines()
                 .map(|s| s.to_string())
@@ -108,14 +94,13 @@ impl GitWrapper {
     pub fn get_branch(&self) -> Result<String, GitError> {
         Ok(
             Self::run_git_command(["rev-parse", "--abbrev-ref", "HEAD"], &self.path, true)
-                .map_err(|e| GitError::from(e))
-                .unwrap()
+                .map_err(|e| GitError::from(e))?
                 .stdout,
         )
     }
 
     pub fn checkout(&self, branch: &String) -> Result<(), GitError> {
-        let res = Self::run_git_command(["checkout", branch], &self.path, false).unwrap();
+        let res = Self::run_git_command(["checkout", branch], &self.path, false)?;
         if res.status != 0 {
             return Err(GitError::CheckoutFailed {
                 branch: branch.clone(),
@@ -126,7 +111,7 @@ impl GitWrapper {
     }
 
     pub fn merge(&self, branch: &String) -> Result<(), GitError> {
-        let res = Self::run_git_command(["merge", branch], &self.path, false).unwrap();
+        let res = Self::run_git_command(["merge", branch], &self.path, false)?;
         if res.status != 0 {
             return Err(GitError::MergeFailed {
                 branch: branch.clone(),
@@ -137,10 +122,10 @@ impl GitWrapper {
     }
 
     pub fn pull(&self) -> Result<(), GitError> {
-        let res = Self::run_git_command(["pull"], &self.path, false).unwrap();
+        let res = Self::run_git_command(["pull"], &self.path, false)?;
         if res.status != 0 {
             return Err(GitError::PullFailed {
-                branch: self.get_branch().unwrap(),
+                branch: self.get_branch()?,
             });
         }
 
@@ -148,19 +133,19 @@ impl GitWrapper {
     }
 
     pub fn push(&self) -> Result<(), GitError> {
-        let cur_branch = self.get_branch().unwrap();
+        let cur_branch = self.get_branch()?;
         let mut args = ["push".to_string()].to_vec();
 
-        if !self.get_branches().unwrap().contains(&cur_branch) {
+        if !self.get_branches()?.contains(&cur_branch) {
             args.push("--set-upstream".to_string());
             args.push("origin".to_string());
-            args.push(self.get_branch().unwrap());
+            args.push(self.get_branch()?);
         }
 
-        let res = Self::run_git_command(&args, &self.path, false).unwrap();
+        let res = Self::run_git_command(&args, &self.path, false)?;
         if res.status != 0 {
             return Err(GitError::PushFailed {
-                branch: self.get_branch().unwrap(),
+                branch: self.get_branch()?,
             });
         }
 
@@ -172,8 +157,7 @@ impl GitWrapper {
             ["push".to_string(), "--tags".to_string()],
             &self.path,
             false,
-        )
-        .unwrap();
+        )?;
         if res.status != 0 {
             return Err(GitError::PushTagsFailed);
         }
@@ -182,10 +166,10 @@ impl GitWrapper {
     }
 
     pub fn create_branch(&self, branch: &String) -> Result<(), GitError> {
-        let res = Self::run_git_command(["checkout", "-b", branch], &self.path, false).unwrap();
+        let res = Self::run_git_command(["checkout", "-b", branch], &self.path, false)?;
         if res.status != 0 {
             return Err(GitError::BranchFailed {
-                branch: self.get_branch().unwrap(),
+                branch: self.get_branch()?,
             });
         }
 
@@ -193,10 +177,10 @@ impl GitWrapper {
     }
 
     pub fn delete_branch(&self, branch: &String) -> Result<(), GitError> {
-        let res = Self::run_git_command(["branch", "-D", branch], &self.path, false).unwrap();
+        let res = Self::run_git_command(["branch", "-D", branch], &self.path, false)?;
         if res.status != 0 {
             return Err(GitError::BranchDeletionFailed {
-                branch: self.get_branch().unwrap(),
+                branch: self.get_branch()?,
             });
         }
 
@@ -204,7 +188,7 @@ impl GitWrapper {
     }
 
     pub fn get_branches(&self) -> Result<Vec<String>, GitError> {
-        let res = Self::run_git_command(["branch"], &self.path, false).unwrap();
+        let res = Self::run_git_command(["branch"], &self.path, false)?;
         if res.status != 0 {
             return Err(GitError::ListBranchFailed);
         }
@@ -213,7 +197,7 @@ impl GitWrapper {
     }
 
     pub fn get_remote_branches(&self) -> Result<Vec<String>, GitError> {
-        let res = Self::run_git_command(["branch", "-r"], &self.path, false).unwrap();
+        let res = Self::run_git_command(["branch", "-r"], &self.path, false)?;
         if res.status != 0 {
             return Err(GitError::ListBranchFailed);
         }
@@ -221,71 +205,81 @@ impl GitWrapper {
         Ok(res.stdout.lines().map(|s| s.to_string()).collect())
     }
 
-    pub fn get_features(&self) -> Result<Vec<String>, GitError> {
-        Ok(self
-            .get_branches()
-            .unwrap()
+    fn filter_local_branches(&self, branches: &Vec<String>, tpe: &String) -> Vec<String> {
+        branches
             .iter()
             .filter_map(|s| {
-                let s = s.replace("*", " ").replace("  ", "");
-                if s.starts_with("feature/") {
-                    Some(s.replace("feature/", ""))
+                let cleaned = s.trim().trim_start_matches('*').trim();
+
+                let mut parts = cleaned.splitn(2, '/');
+                let kind = parts.next()?;
+                let name = parts.next()?;
+
+                if kind == tpe {
+                    Some(name.to_string())
                 } else {
                     None
                 }
             })
-            .collect())
+            .collect()
     }
 
     pub fn get_releases(&self) -> Result<Vec<String>, GitError> {
-        Ok(self
-            .get_branches()
-            .unwrap()
+        let branches = self.get_branches()?;
+        Ok(self.filter_local_branches(&branches, &"release".to_string()))
+    }
+
+    pub fn get_features(&self) -> Result<Vec<String>, GitError> {
+        let branches = self.get_branches()?;
+        Ok(self.filter_local_branches(&branches, &"feature".to_string()))
+    }
+
+    pub fn get_bugfixes(&self) -> Result<Vec<String>, GitError> {
+        let branches = self.get_branches()?;
+        Ok(self.filter_local_branches(&branches, &"bugfix".to_string()))
+    }
+
+    fn filter_remote_branches(&self, branches: &Vec<String>, tpe: &String) -> Vec<String> {
+        branches
             .iter()
             .filter_map(|s| {
-                let s = s.replace("*", " ").replace("  ", "");
-                if s.starts_with("release/") {
-                    Some(s.replace("release/", ""))
+                let cleaned = s.trim().trim_start_matches('*').trim();
+
+                let mut parts = cleaned.splitn(3, '/');
+
+                let _remote = parts.next()?;
+                let kind = parts.next()?;
+                let name = parts.next()?;
+
+                if kind == tpe {
+                    Some(name.to_string())
                 } else {
                     None
                 }
             })
-            .collect())
+            .collect()
     }
 
     pub fn get_remote_releases(&self) -> Result<Vec<String>, GitError> {
-        Ok(self
-            .get_remote_branches()
-            .unwrap()
-            .iter()
-            .filter_map(|s| {
-                let s = s.replace("*", " ").replace("  ", "");
-                if s.starts_with("release/") {
-                    Some(s.replace("release/", ""))
-                } else {
-                    None
-                }
-            })
-            .collect())
+        let branches = self.get_remote_branches()?;
+        Ok(self.filter_remote_branches(&branches, &"release".to_string()))
+    }
+
+    pub fn get_remote_features(&self) -> Result<Vec<String>, GitError> {
+        let branches = self.get_remote_branches()?;
+        Ok(self.filter_remote_branches(&branches, &"feature".to_string()))
+    }
+
+    pub fn get_remote_bugfixes(&self) -> Result<Vec<String>, GitError> {
+        let branches = self.get_remote_branches()?;
+        Ok(self.filter_remote_branches(&branches, &"bugfix".to_string()))
     }
 
     pub fn commit(&self, msg: &String) -> Result<(), GitError> {
-        let res = Self::run_git_command(["commit", "-m", msg], &self.path, false).unwrap();
+        let res = Self::run_git_command(["commit", "--allow-empty", "-m", msg], &self.path, false)?;
         if res.status != 0 {
             return Err(GitError::CommitFailed {
-                branch: self.get_branch().unwrap(),
-            });
-        }
-
-        Ok(())
-    }
-
-    pub fn commit_empty(&self, msg: &String) -> Result<(), GitError> {
-        let res = Self::run_git_command(["commit", "--allow-empty", "-m", msg], &self.path, false)
-            .unwrap();
-        if res.status != 0 {
-            return Err(GitError::CommitFailed {
-                branch: self.get_branch().unwrap(),
+                branch: self.get_branch()?,
             });
         }
 
@@ -293,9 +287,28 @@ impl GitWrapper {
     }
 
     pub fn tag(&self, name: &String) -> Result<(), GitError> {
-        let res = Self::run_git_command(["tag", name], &self.path, false).unwrap();
+        let res = Self::run_git_command(["tag", name], &self.path, false)?;
         if res.status != 0 {
             return Err(GitError::TagFailed { tag: name.clone() });
+        }
+
+        Ok(())
+    }
+
+    pub fn fetch(&self, all: bool, prune: bool) -> Result<(), GitError> {
+        let mut args = ["fetch".to_string()].to_vec();
+
+        if all {
+            args.push("--all".to_string());
+        }
+
+        if prune {
+            args.push("--prune".to_string());
+        }
+
+        let res = Self::run_git_command(&args, &self.path, false)?;
+        if res.status != 0 {
+            return Err(GitError::FetchFailed);
         }
 
         Ok(())

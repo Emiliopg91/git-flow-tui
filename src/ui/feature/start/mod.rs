@@ -1,5 +1,5 @@
 use std::{
-    sync::{Arc, Mutex, mpsc},
+    sync::{mpsc, Arc, Mutex},
     thread::{self, JoinHandle},
 };
 
@@ -7,14 +7,17 @@ use crate::{
     git::GitWrapper,
     logic::feature::feature_start,
     ui::{
+        widgets::{
+            popup::Popup,
+            text_input::{InputState, TextInput},
+        },
         AppState, UiIface,
-        widgets::text_input::{InputState, TextInput},
     },
 };
 
 use ratatui::{
     crossterm::event::KeyCode,
-    prelude::{Frame, Rect},
+    prelude::{Constraint, Frame, Layout, Rect},
     widgets::Paragraph,
 };
 
@@ -29,6 +32,7 @@ pub struct FeatureStart {
     name: InputState,
     state: StartProcState,
     messages: Arc<Mutex<Vec<String>>>,
+    popup_message: Option<String>,
     worker: Option<JoinHandle<()>>,
     rx: Option<mpsc::Receiver<String>>,
     tx: Option<mpsc::Sender<String>>,
@@ -40,6 +44,7 @@ impl FeatureStart {
             name: InputState::new(&"".to_string()),
             state: StartProcState::EnterName,
             messages: Arc::new(Mutex::new(Vec::new())),
+            popup_message: None,
             worker: None,
             rx: None,
             tx: None,
@@ -52,24 +57,20 @@ impl UiIface for FeatureStart {
         self.set_text("Start feature".to_string(), header, frame);
 
         let messages = self.messages.lock().unwrap();
-
         let text = messages
             .iter()
             .skip(messages.len().saturating_sub(body.height as usize))
             .map(|s| s.as_str())
             .collect::<Vec<_>>()
             .join("\n");
-
+        let size = messages.len();
         drop(messages);
 
-        let mut final_text = text;
+        let layout = Layout::vertical([Constraint::Length(size as u16), Constraint::Min(0)]);
+        let [msg_area, input_area] = body.layout(&layout);
 
         match self.state {
             StartProcState::EnterName => {
-                if final_text.trim().len() > 0 {
-                    final_text.push_str("\n");
-                }
-
                 let footer_txt = if self.name.value.len() > 4 {
                     format!("Enter: continue | Esc: back")
                 } else {
@@ -78,60 +79,72 @@ impl UiIface for FeatureStart {
 
                 self.set_text(footer_txt, footer, frame);
             }
-            StartProcState::Creating => {
-                let mut messages = self.messages.lock().unwrap();
-                if let Some(rx) = &self.rx {
-                    while let Ok(msg) = rx.try_recv() {
-                        messages.push(msg.clone());
-                        final_text.push_str(&format!("\n{msg}"));
-                    }
-                }
-                drop(messages);
-
-                let finished = self
-                    .worker
-                    .as_ref()
-                    .map(|t| t.is_finished())
-                    .unwrap_or(false);
-                if finished {
-                    self.state = StartProcState::Finished
-                }
-            }
+            StartProcState::Creating => {}
             StartProcState::Finished => {
                 self.set_text("Esc: back".to_string(), footer, frame);
             }
         }
 
-        let widget = Paragraph::new(final_text);
-        frame.render_widget(widget, body);
+        let widget = Paragraph::new(text);
+        frame.render_widget(widget, msg_area);
 
         if self.state == StartProcState::EnterName {
-            let text_input = TextInput::new(&"Enter release name".to_string());
-            frame.render_stateful_widget(text_input, body, &mut self.name);
+            let text_input = TextInput::new(&"Enter feature name".to_string());
+            frame.render_stateful_widget(text_input, input_area, &mut self.name);
+
+            if let Some(popup_message) = &self.popup_message {
+                let popup = Popup::new(&"Error".to_string(), popup_message);
+                frame.render_widget(popup, body);
+            }
+        }
+    }
+
+    fn tick(&mut self) {
+        if self.state == StartProcState::Creating {
+            let mut messages = self.messages.lock().unwrap();
+            if let Some(rx) = &self.rx {
+                while let Ok(msg) = rx.try_recv() {
+                    messages.push(msg.clone());
+                }
+            }
+            drop(messages);
+
+            let finished = self
+                .worker
+                .as_ref()
+                .map(|t| t.is_finished())
+                .unwrap_or(false);
+            if finished {
+                self.state = StartProcState::Finished
+            }
         }
     }
 
     fn handle_input(&mut self, key: KeyCode) -> Option<AppState> {
         match key {
             KeyCode::Esc => {
-                if self.state == StartProcState::EnterName || self.state == StartProcState::Finished
-                {
-                    return Some(AppState::FeatureList);
+                if self.popup_message.is_some() {
+                    self.popup_message = None;
+                } else {
+                    if self.state == StartProcState::EnterName
+                        || self.state == StartProcState::Finished
+                    {
+                        return Some(AppState::FeatureList);
+                    }
                 }
             }
 
             KeyCode::Enter => {
                 if self.state == StartProcState::EnterName {
-                    let features = GitWrapper::global().lock().unwrap().get_features().unwrap();
+                    let git = GitWrapper::global().lock().unwrap();
+                    let features = git.get_features().unwrap();
+                    let rem_features = git.get_remote_features().unwrap();
+                    drop(git);
 
-                    if features.contains(&self.name.value) {
-                        let mut msgs = self.messages.lock().unwrap();
-
-                        let msg = "Feature already exists".to_string();
-                        if !msgs.contains(&msg) {
-                            msgs.push(msg);
-                        }
-
+                    if features.contains(&self.name.value)
+                        || rem_features.contains(&self.name.value)
+                    {
+                        self.popup_message = Some("Feature already exists".to_string());
                         self.name.value.clear();
                     } else {
                         let (tx, rx) = mpsc::channel();

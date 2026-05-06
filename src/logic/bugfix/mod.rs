@@ -2,12 +2,12 @@ use std::sync::mpsc::Sender;
 
 use crate::git::{errors::GitError, GitWrapper};
 
-pub fn feature_start(name: &String, sender: Sender<String>) -> Result<(), GitError> {
-    let branch = format!("feature/{}", name);
+pub fn bugfix_start(name: &String, sender: Sender<String>) -> Result<(), GitError> {
+    let branch = format!("bugfix/{}", name);
     let git = GitWrapper::global().lock().unwrap();
 
     sender
-        .send(format!("Starting creation of feature {}...", name))
+        .send(format!("Starting creation of bugfix {}...", name))
         .unwrap();
 
     if git.get_branch().unwrap() != "develop" {
@@ -27,18 +27,18 @@ pub fn feature_start(name: &String, sender: Sender<String>) -> Result<(), GitErr
     git.create_branch(&branch)?;
 
     sender
-        .send("Feature started succesfully".to_string())
+        .send("Bugfix started succesfully".to_string())
         .unwrap();
 
     Ok(())
 }
 
-pub fn feature_finish(name: &String, sender: Sender<String>) -> Result<(), GitError> {
-    let branch = format!("feature/{}", name);
+pub fn bugfix_finish(name: &String, sender: Sender<String>) -> Result<(), GitError> {
+    let branch = format!("bugfix/{}", name);
     let git = GitWrapper::global().lock().unwrap();
 
     sender
-        .send(format!("Finishing feature {}...", name))
+        .send(format!("Finishing bugfix {}...", name))
         .unwrap();
 
     if git.get_branch().unwrap() != branch {
@@ -73,7 +73,7 @@ pub fn feature_finish(name: &String, sender: Sender<String>) -> Result<(), GitEr
     sender
         .send("  Creating commit for merge".to_string())
         .unwrap();
-    git.commit(&format!("Merge after {} feature merge", name))
+    git.commit(&format!("Merge after {} bugfix merge", name))
         .unwrap();
 
     sender
@@ -87,7 +87,7 @@ pub fn feature_finish(name: &String, sender: Sender<String>) -> Result<(), GitEr
     git.delete_branch(&branch).unwrap();
 
     sender
-        .send("Feature finished succesfully".to_string())
+        .send("Bugfix finished succesfully".to_string())
         .unwrap();
 
     Ok(())

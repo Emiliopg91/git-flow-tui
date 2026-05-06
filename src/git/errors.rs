@@ -15,6 +15,7 @@ pub enum GitError {
     ListBranchFailed,
     CommitFailed { branch: String },
     TagFailed { tag: String },
+    FetchFailed,
 }
 
 impl fmt::Display for GitError {
@@ -28,34 +29,37 @@ impl fmt::Display for GitError {
             }
             GitError::Io(err) => write!(f, "IO error: {}", err),
             GitError::MergeFailed { branch } => {
-                write!(f, "Could not merge {} branch.", branch)
+                write!(f, "Could not merge {} branch", branch)
             }
             GitError::CheckoutFailed { branch } => {
-                write!(f, "Could not checkout {} branch.", branch)
+                write!(f, "Could not checkout {} branch", branch)
             }
             GitError::PullFailed { branch } => {
-                write!(f, "Could not pull {} branch from remote.", branch)
+                write!(f, "Could not pull {} branch from remote", branch)
             }
             GitError::PushFailed { branch } => {
-                write!(f, "Could not push {} branch to remote.", branch)
+                write!(f, "Could not push {} branch to remote", branch)
             }
             GitError::PushTagsFailed => {
                 write!(f, "Could not push tags")
             }
             GitError::BranchFailed { branch } => {
-                write!(f, "Could not create {} branch.", branch)
+                write!(f, "Could not create {} branch", branch)
             }
             GitError::ListBranchFailed => {
                 write!(f, "Could not list local branches.")
             }
             GitError::BranchDeletionFailed { branch } => {
-                write!(f, "Could not delete local branch {}.", branch)
+                write!(f, "Could not delete local branch {}", branch)
             }
             GitError::CommitFailed { branch } => {
-                write!(f, "Could not commit local branch {}.", branch)
+                write!(f, "Could not commit local branch {}", branch)
             }
             GitError::TagFailed { tag } => {
-                write!(f, "Could not create tag {}.", tag)
+                write!(f, "Could not create tag {}", tag)
+            }
+            GitError::FetchFailed => {
+                write!(f, "Could not fetch remotes")
             }
         }
     }
