@@ -15,7 +15,6 @@ mod ui;
 
 fn main() -> Result<()> {
     let repo_path = env::current_dir()?;
-    println!("Using repository {:?}", repo_path);
     GitWrapper::initialize(repo_path).unwrap_or_else(|e| {
         eprintln!("Error: {}", e);
         exit(ExitCode::NotAGitRepository.code());
