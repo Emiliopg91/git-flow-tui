@@ -8,7 +8,7 @@ color-eyre = "0.6.5"
 ratatui = "0.30.0"
 
 [profile.release]
-lto = "fat"       # thin or fat
+lto = "fat"
 codegen-units = 1
 strip = true
 opt-level = 3

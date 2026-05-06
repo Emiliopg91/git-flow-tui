@@ -36,23 +36,6 @@ pub enum AppState {
     //    Hotfix,
 }
 
-impl AppState {
-    fn try_from(value: &str) -> Option<Self> {
-        match value {
-            "MainMenu" => Some(AppState::MainMenu),
-            "Feature" => Some(AppState::FeatureList),
-            "FeatureStart" => Some(AppState::FeatureStart),
-            "FeatureFinish" => Some(AppState::FeatureFinish),
-            "Release" => Some(AppState::ReleaseList),
-            "Bugfix" => Some(AppState::BugfixList),
-            "BugfixStart" => Some(AppState::BugfixStart),
-            "BugfixFinishy" => Some(AppState::BugfixFinish),
-            //"Hotfix" => Some(AppState::Hotfix),
-            _ => None,
-        }
-    }
-}
-
 pub trait UiIface {
     fn render(&mut self, header: Rect, body: Rect, footer: Rect, frame: &mut Frame);
     fn handle_input(&mut self, key: KeyCode) -> Option<AppState>;

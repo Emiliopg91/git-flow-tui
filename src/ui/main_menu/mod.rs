@@ -1,16 +1,16 @@
 use std::process::exit;
 
 use ratatui::{
-    Frame,
     crossterm::{
         cursor::Show,
         event::KeyCode,
         execute,
-        terminal::{LeaveAlternateScreen, disable_raw_mode},
+        terminal::{disable_raw_mode, LeaveAlternateScreen},
     },
     layout::Rect,
     style::{Color, Modifier},
-    widgets::{List, ListItem, ListState},
+    widgets::{List, ListState},
+    Frame,
 };
 
 use crate::{
@@ -23,7 +23,6 @@ pub struct MainMenu {
 }
 
 impl MainMenu {
-    const ENTRIES: &'static [&'static str] = &["Feature", "Release", "Bugfix", "Hotfix"];
     pub fn new() -> Self {
         Self {
             entry: ListState::default().with_selected(Some(0)),
@@ -39,7 +38,15 @@ impl UiIface for MainMenu {
                 let _ = execute!(std::io::stdout(), LeaveAlternateScreen, Show);
                 exit(ExitCode::Ok.code());
             }
-            KeyCode::Enter => return AppState::try_from(Self::ENTRIES[self.entry.selected()?]),
+            KeyCode::Enter => {
+                return match self.entry.selected() {
+                    Some(0) => Some(AppState::FeatureList),
+                    Some(1) => Some(AppState::ReleaseList),
+                    Some(2) => Some(AppState::BugfixList),
+                    Some(_) => None,
+                    None => None,
+                }
+            }
             KeyCode::Up => self.entry.select_previous(),
             KeyCode::Down => self.entry.select_next(),
             _ => (),
@@ -49,7 +56,7 @@ impl UiIface for MainMenu {
     }
 
     fn render(&mut self, header: Rect, body: Rect, footer: Rect, frame: &mut Frame) {
-        let list = List::new(Self::ENTRIES.iter().map(|s| ListItem::from(*s)))
+        let list = List::new(["Feature", "Release", "Bugfix", "Hotfix"])
             .style(Color::White)
             .highlight_style(Modifier::REVERSED)
             .highlight_symbol(" ");
