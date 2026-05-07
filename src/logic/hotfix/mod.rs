@@ -1,6 +1,9 @@
 use std::sync::mpsc::Sender;
 
-use crate::git::{GitWrapper, errors::GitError};
+use crate::{
+    git::{GitWrapper, errors::GitError},
+    logic::pipeline::{LogicPipeline, StepKind},
+};
 
 pub fn hotfix_start(name: &str, sender: Sender<String>) -> Result<(), GitError> {
     let branch = format!("hotfix/{}", name);
@@ -12,15 +15,16 @@ pub fn hotfix_start(name: &str, sender: Sender<String>) -> Result<(), GitError> 
 
     send(&format!("Starting creation of hotfix {}...", name));
 
-    if git.get_branch()? != git.main_branch {
-        send("  Checking out main branch...");
-        git.checkout(&git.main_branch)?;
-    }
-    send("  Syncing changes from remote...");
-    git.pull()?;
-
-    send(&format!("  Creating branch {}...", branch));
-    git.create_branch(&branch)?;
+    LogicPipeline::execute_pipeline(
+        &[
+            StepKind::Checkout {
+                branch: git.main_branch.clone(),
+            },
+            StepKind::Pull,
+            StepKind::CreateBranch { branch },
+        ],
+        sender.clone(),
+    )?;
 
     send("Hotfix started succesfully");
 
@@ -37,48 +41,38 @@ pub fn hotfix_finish(name: &str, sender: Sender<String>) -> Result<(), GitError>
 
     send(&format!("Finishing hotfix {}...", name));
 
-    if git.get_branch()? != branch {
-        send(&format!("  Checking out {} branch...", branch));
-        git.checkout(&branch)?;
-    }
-
-    if git.get_remote_branches()?.contains(&branch) {
-        send("  Syncing changes from remote...");
-        git.pull()?;
-    }
-
-    send(&format!("  Pushing {} to remote...", branch));
-    git.push()?;
-
-    send("  Checking out main branch...");
-    git.checkout(&git.main_branch)?;
-
-    send("  Syncing changes from remote...");
-    git.pull()?;
-
-    send(&format!("  Merging {} to main branch...", branch));
-    git.merge(&branch)?;
-
-    send("  Creating commit for merge");
-    git.commit(&format!("Merge after {} hotfix merge", name))?;
-
-    send("  Pushing main branch to remote...");
-    git.push()?;
-
-    send("  Checking out develop branch...");
-    git.checkout("develop")?;
-
-    send("  Syncing changes from remote...");
-    git.pull()?;
-
-    send("  Merging main branch to develop branch...");
-    git.merge(&git.main_branch)?;
-
-    send("  Pushing develop branch to remote...");
-    git.push()?;
-
-    send(&format!("  Deleting local {} branch...", branch));
-    git.delete_branch(&branch)?;
+    LogicPipeline::execute_pipeline(
+        &[
+            StepKind::Checkout {
+                branch: branch.clone(),
+            },
+            StepKind::Pull,
+            StepKind::Push,
+            StepKind::Checkout {
+                branch: git.main_branch.clone(),
+            },
+            StepKind::Pull,
+            StepKind::Merge {
+                branch: branch.clone(),
+            },
+            StepKind::Commit {
+                message: format!("Merge after {} hotfix merge", name),
+            },
+            StepKind::Push,
+            StepKind::Checkout {
+                branch: "develop".to_string(),
+            },
+            StepKind::Pull,
+            StepKind::Merge {
+                branch: git.main_branch.clone(),
+            },
+            StepKind::Push,
+            StepKind::DeleteBranch {
+                branch: branch.clone(),
+            },
+        ],
+        sender.clone(),
+    )?;
 
     send("Hotfix finished succesfully");
 

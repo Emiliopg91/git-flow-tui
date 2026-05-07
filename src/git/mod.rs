@@ -198,7 +198,12 @@ impl GitWrapper {
         Ok(res
             .stdout
             .lines()
-            .map(|s| s.replace("* ", "").trim().to_string())
+            .map(|s| {
+                s.replace("* ", "")
+                    .replace("origin/", "")
+                    .trim()
+                    .to_string()
+            })
             .collect())
     }
 

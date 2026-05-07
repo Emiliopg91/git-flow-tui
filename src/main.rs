@@ -77,16 +77,16 @@ fn main() -> Result<()> {
         let cli = CliArguments::parse();
         initialize_and_validate()?;
 
-        let function: Option<fn(&str, Sender<String>) -> Result<(), GitError>> =
-            match (cli.kind, cli.action) {
-                (BranchKind::Feature, Action::Start) => Some(feature_start),
-                (BranchKind::Feature, Action::Finish) => Some(feature_finish),
-                (BranchKind::Release, Action::Start) => Some(release_start),
-                (BranchKind::Release, Action::Finish) => Some(release_finish),
-                (BranchKind::Hotfix, Action::Start) => Some(hotfix_start),
-                (BranchKind::Hotfix, Action::Finish) => Some(hotfix_finish),
-                (_, _) => None,
-            };
+        type StepFn = fn(&str, Sender<String>) -> Result<(), GitError>;
+        let function: Option<StepFn> = match (cli.kind, cli.action) {
+            (BranchKind::Feature, Action::Start) => Some(feature_start),
+            (BranchKind::Feature, Action::Finish) => Some(feature_finish),
+            (BranchKind::Release, Action::Start) => Some(release_start),
+            (BranchKind::Release, Action::Finish) => Some(release_finish),
+            (BranchKind::Hotfix, Action::Start) => Some(hotfix_start),
+            (BranchKind::Hotfix, Action::Finish) => Some(hotfix_finish),
+            (_, _) => None,
+        };
 
         if let Some(fnc) = function {
             let (tx, rx) = mpsc::channel::<String>();
