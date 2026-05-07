@@ -7,20 +7,19 @@ mod widgets;
 use std::time::Duration;
 
 use ratatui::{
+    Frame,
     crossterm::event::{self, KeyCode},
     layout::{Alignment, Constraint, Layout, Margin, Rect},
     style::{Color, Style},
     widgets::{Block, Borders, Paragraph},
-    Frame,
 };
 
 use crate::ui::{
-    feature::{finish::FeatureFinish, start::FeatureStart, FeatureList},
+    bugfix::{BugfixList, finish::BugfixFinish, start::BugfixStart},
+    feature::{FeatureList, finish::FeatureFinish, start::FeatureStart},
     main_menu::MainMenu,
-    release::{finish::ReleaseFinish, start::ReleaseStart, ReleaseList},
+    release::{ReleaseList, finish::ReleaseFinish, start::ReleaseStart},
 };
-
-use self::bugfix::{finish::BugfixFinish, start::BugfixStart, BugfixList};
 
 pub enum AppState {
     MainMenu,
@@ -67,28 +66,31 @@ pub fn main_loop() -> color_eyre::Result<()> {
 
     let mut app = App::new();
 
-    ratatui::run(|terminal| loop {
-        if event::poll(Duration::from_millis(50))?
-            && let Some(key) = event::read()?.as_key_press_event()
-                && let Some(next) = app.page.handle_input(key.code) {
-                    app.state = next;
-                    match app.state {
-                        AppState::MainMenu => app.page = Box::new(MainMenu::new()),
-                        AppState::FeatureList => app.page = Box::new(FeatureList::new()),
-                        AppState::FeatureStart => app.page = Box::new(FeatureStart::new()),
-                        AppState::FeatureFinish => app.page = Box::new(FeatureFinish::new()),
-                        AppState::ReleaseList => app.page = Box::new(ReleaseList::new()),
-                        AppState::ReleaseStart => app.page = Box::new(ReleaseStart::new()),
-                        AppState::ReleaseFinish => app.page = Box::new(ReleaseFinish::new()),
-                        AppState::BugfixList => app.page = Box::new(BugfixList::new()),
-                        AppState::BugfixStart => app.page = Box::new(BugfixStart::new()),
-                        AppState::BugfixFinish => app.page = Box::new(BugfixFinish::new()),
-                    }
+    ratatui::run(|terminal| {
+        loop {
+            if event::poll(Duration::from_millis(50))?
+                && let Some(key) = event::read()?.as_key_press_event()
+                && let Some(next) = app.page.handle_input(key.code)
+            {
+                app.state = next;
+                match app.state {
+                    AppState::MainMenu => app.page = Box::new(MainMenu::new()),
+                    AppState::FeatureList => app.page = Box::new(FeatureList::new()),
+                    AppState::FeatureStart => app.page = Box::new(FeatureStart::new()),
+                    AppState::FeatureFinish => app.page = Box::new(FeatureFinish::new()),
+                    AppState::ReleaseList => app.page = Box::new(ReleaseList::new()),
+                    AppState::ReleaseStart => app.page = Box::new(ReleaseStart::new()),
+                    AppState::ReleaseFinish => app.page = Box::new(ReleaseFinish::new()),
+                    AppState::BugfixList => app.page = Box::new(BugfixList::new()),
+                    AppState::BugfixStart => app.page = Box::new(BugfixStart::new()),
+                    AppState::BugfixFinish => app.page = Box::new(BugfixFinish::new()),
                 }
+            }
 
-        app.page.tick();
+            app.page.tick();
 
-        terminal.draw(|frame| render(frame, &mut app))?;
+            terminal.draw(|frame| render(frame, &mut app))?;
+        }
     })
 }
 
