@@ -5,7 +5,6 @@ edition = "2024"
 
 [dependencies]
 color-eyre = "0.6.5"
-git2 = "0.20.4"
 ratatui = "0.30.0"
 
 [profile.release]
