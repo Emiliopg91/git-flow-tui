@@ -53,11 +53,17 @@ pub fn release_finish(name: &str, sender: Sender<String>) -> Result<(), GitError
     send(&format!("  Pushing {branch} to remote..."));
     git.push()?;
 
-    send("  Checking out master branch...");
-    git.checkout("master")?;
+    send("  Checking out main branch...");
+    git.checkout(&git.main_branch)?;
 
-    send(&format!("  Merging {branch} to master..."));
+    send("  Syncing main with remote...");
+    git.pull()?;
+
+    send(&format!("  Merging {branch} to main branch..."));
     git.merge(&branch)?;
+
+    send("  Pushing main branch to remote...");
+    git.push()?;
 
     send(&format!("  Creating tag {name}..."));
     git.tag(name)?;
@@ -65,22 +71,15 @@ pub fn release_finish(name: &str, sender: Sender<String>) -> Result<(), GitError
     send("  Pushing tags...");
     git.push_tags()?;
 
-    send("  Creating commit for merge");
-    git.commit(&format!("Merge after {name} release merge"))?;
-
-    send("  Pushing master to remote...");
-    git.push()?;
-
     send("  Checking out develop branch...");
     git.checkout("develop")?;
 
-    send("  Merging master to develop...");
-    git.merge("master")?;
+    send("  Merging main branch to develop...");
+    git.merge(&git.main_branch)?;
 
     send("  Pushing develop to remote...");
     git.push()?;
 
-    // Limpieza
     send(&format!("  Deleting local {branch} branch..."));
     git.delete_branch(&branch)?;
 

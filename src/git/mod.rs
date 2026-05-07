@@ -11,7 +11,8 @@ use git2::{FetchOptions, RemoteCallbacks, Repository, Status, StatusOptions};
 use crate::git::errors::{GitError, MapGitError};
 
 pub struct GitWrapper {
-    repo: Repository,
+    pub repo: Repository,
+    pub main_branch: String,
 }
 
 static GIT_WRAPPER_INST: OnceLock<Mutex<GitWrapper>> = OnceLock::new();
@@ -27,6 +28,7 @@ impl GitWrapper {
             if let Ok(exists) = fs::exists(curr_path.join(".git"))
                 && exists
             {
+                println!("Using repository {}", curr_path.display().to_string());
                 break;
             }
             curr_path = curr_path.parent().unwrap().to_path_buf();
@@ -35,12 +37,22 @@ impl GitWrapper {
             }
         }
 
-        let inst = Self {
-            repo: Repository::open(curr_path).map_err(|e| GitError::GitError {
-                op: errors::GitOp::Open,
-                error: e,
-            })?,
+        let repo = Repository::open(curr_path).map_err(|e| GitError::GitError {
+            op: errors::GitOp::Open,
+            error: e,
+        })?;
+
+        let mut inst = Self {
+            repo,
+            main_branch: "main".to_string(),
         };
+
+        let branches = inst.get_branches()?;
+        if branches.contains(&"master".to_string()) {
+            inst.main_branch = "master".to_string();
+        }
+
+        println!("Detected main branch: {}", inst.main_branch);
 
         GIT_WRAPPER_INST.get_or_init(|| Mutex::new(inst));
 
@@ -126,7 +138,7 @@ impl GitWrapper {
             .merge_analysis(&[&annotated])
             .to_git_error(errors::GitOp::Merge)?;
 
-        let annotated = self
+        let annotated_commit = self
             .repo
             .find_commit(annotated.id())
             .to_git_error(errors::GitOp::Merge)?;
@@ -135,19 +147,20 @@ impl GitWrapper {
             return Ok(());
         }
 
+        // FAST FORWARD
         if analysis.0.is_fast_forward() {
-            let refname = "HEAD";
+            let branch_ref_name = format!("refs/heads/{}", branch);
 
             let mut r = self
                 .repo
-                .find_reference(refname)
+                .find_reference(&branch_ref_name)
                 .to_git_error(errors::GitOp::Merge)?;
 
-            r.set_target(annotated.id(), "Fast-Forward")
+            r.set_target(annotated_commit.id(), "Fast-Forward")
                 .to_git_error(errors::GitOp::Merge)?;
 
             self.repo
-                .set_head(refname)
+                .set_head(&branch_ref_name)
                 .to_git_error(errors::GitOp::Merge)?;
 
             self.repo
@@ -157,10 +170,11 @@ impl GitWrapper {
             return Ok(());
         }
 
+        // NORMAL MERGE
         if analysis.0.is_normal() {
             let mut idx = self
                 .repo
-                .merge_commits(&head_commit, &annotated, None)
+                .merge_commits(&head_commit, &annotated_commit, None)
                 .to_git_error(errors::GitOp::Merge)?;
 
             if idx.has_conflicts() {
@@ -181,14 +195,9 @@ impl GitWrapper {
 
             let sig = self.repo.signature().to_git_error(errors::GitOp::Merge)?;
 
-            let head_commit = self
-                .repo
-                .find_commit(head_commit.id())
-                .to_git_error(errors::GitOp::Merge)?;
-
             let other_commit = self
                 .repo
-                .find_commit(annotated.id())
+                .find_commit(annotated_commit.id())
                 .to_git_error(errors::GitOp::Merge)?;
 
             self.repo
@@ -321,7 +330,7 @@ impl GitWrapper {
             .find_remote("origin")
             .to_git_error(errors::GitOp::Push)?;
 
-        let refspec = format!("refs/heads/{0}:refs/heads/{0}", branch);
+        let refspec = format!("refs/heads/{b}:refs/heads/{b}", b = branch);
 
         let mut options = git2::PushOptions::new();
         options.remote_callbacks(git2::RemoteCallbacks::new());
@@ -353,8 +362,22 @@ impl GitWrapper {
         let mut options = git2::PushOptions::new();
         options.remote_callbacks(callbacks);
 
+        let tags = self
+            .repo
+            .tag_names(None)
+            .to_git_error(errors::GitOp::Push)?;
+
+        let mut refspecs = Vec::new();
+
+        for tag in tags.iter().flatten() {
+            let spec = format!("refs/tags/{}:refs/tags/{}", tag, tag);
+            refspecs.push(spec);
+        }
+
+        let refspecs: Vec<&str> = refspecs.iter().map(|s| s.as_str()).collect();
+
         remote
-            .push(&["refs/tags/*:refs/tags/*"], Some(&mut options))
+            .push(&refspecs, Some(&mut options))
             .to_git_error(errors::GitOp::Push)?;
 
         Ok(())
