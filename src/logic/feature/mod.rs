@@ -2,7 +2,7 @@ use std::sync::mpsc::Sender;
 
 use crate::git::{GitWrapper, errors::GitError};
 
-pub fn feature_start(name: &String, sender: Sender<String>) -> Result<(), GitError> {
+pub fn feature_start(name: &str, sender: Sender<String>) -> Result<(), GitError> {
     let branch = format!("feature/{}", name);
     let git = GitWrapper::global().lock().unwrap();
 
@@ -27,7 +27,7 @@ pub fn feature_start(name: &String, sender: Sender<String>) -> Result<(), GitErr
     Ok(())
 }
 
-pub fn feature_finish(name: &String, sender: Sender<String>) -> Result<(), GitError> {
+pub fn feature_finish(name: &str, sender: Sender<String>) -> Result<(), GitError> {
     let branch = format!("feature/{}", name);
     let git = GitWrapper::global().lock().unwrap();
 

@@ -32,14 +32,16 @@ impl GitWrapper {
             return Err(GitError::NotAGitRepository);
         }
 
-        let mut inst = Self {
-            main_branch: "main".to_string(),
-        };
+        let res = Self::run_git_command(["symbolic-ref", "refs/remotes/origin/HEAD"], false)
+            .unwrap_or(GitCmdResult {
+                status: 0,
+                stdout: "main".to_string(),
+                stderr: "".to_string(),
+            });
 
-        println!("Branches: {:?}", inst.get_branches().unwrap());
-        if inst.get_branches()?.contains(&"master".to_string()) {
-            inst.main_branch = "master".to_string();
-        }
+        let inst = Self {
+            main_branch: res.stdout.rsplit('/').next().unwrap_or("main").to_string(),
+        };
 
         GIT_WRAPPER_INST.get_or_init(|| Mutex::new(inst));
 

@@ -2,7 +2,7 @@ use std::sync::mpsc::Sender;
 
 use crate::git::{GitWrapper, errors::GitError};
 
-pub fn hotfix_start(name: &String, sender: Sender<String>) -> Result<(), GitError> {
+pub fn hotfix_start(name: &str, sender: Sender<String>) -> Result<(), GitError> {
     let branch = format!("hotfix/{}", name);
     let git = GitWrapper::global().lock().unwrap();
 
@@ -27,7 +27,7 @@ pub fn hotfix_start(name: &String, sender: Sender<String>) -> Result<(), GitErro
     Ok(())
 }
 
-pub fn hotfix_finish(name: &String, sender: Sender<String>) -> Result<(), GitError> {
+pub fn hotfix_finish(name: &str, sender: Sender<String>) -> Result<(), GitError> {
     let branch = format!("hotfix/{}", name);
     let git = GitWrapper::global().lock().unwrap();
 

@@ -2,7 +2,7 @@ use std::sync::mpsc::Sender;
 
 use crate::git::{GitWrapper, errors::GitError};
 
-pub fn release_start(name: &String, sender: Sender<String>) -> Result<(), GitError> {
+pub fn release_start(name: &str, sender: Sender<String>) -> Result<(), GitError> {
     let branch = format!("release/{name}");
 
     let send = |msg: &str| {
