@@ -1,5 +1,5 @@
 use std::{
-    sync::{mpsc, Arc, Mutex},
+    sync::{Arc, Mutex, mpsc},
     thread::{self, JoinHandle},
 };
 
@@ -7,11 +7,11 @@ use crate::{
     git::GitWrapper,
     logic::release::release_start,
     ui::{
+        AppState, UiIface,
         widgets::{
             popup::Popup,
             text_input::{InputState, TextInput},
         },
-        AppState, UiIface,
     },
 };
 
@@ -124,10 +124,11 @@ impl UiIface for ReleaseStart {
             }
             StartProcState::Fetching => {
                 if let Ok(git) = GitWrapper::global().lock()
-                    && git.fetch(true, true).is_ok() {
-                        self.state = StartProcState::EnterName;
-                        return;
-                    }
+                    && git.fetch(true, true).is_ok()
+                {
+                    self.state = StartProcState::EnterName;
+                    return;
+                }
 
                 messages.push("Could not fetch from remote".to_string());
                 self.state = StartProcState::Finished;
@@ -146,48 +147,52 @@ impl UiIface for ReleaseStart {
                     if self.state == StartProcState::EnterName
                         || self.state == StartProcState::Finished
                     {
-                        return Some(AppState::ReleaseList);
+                        return Some(AppState::MainMenu);
                     }
                 }
             }
 
-            KeyCode::Enter
-                if self.state == StartProcState::EnterName => {
-                    let git = GitWrapper::global().lock().unwrap();
-                    let releases = git.get_releases().unwrap();
-                    let rem_releases = git.get_remote_releases().unwrap();
-                    drop(git);
+            KeyCode::Enter if self.state == StartProcState::EnterName => {
+                let git = GitWrapper::global().lock().unwrap();
+                let releases = git.get_releases().unwrap();
+                let rem_releases = git.get_remote_releases().unwrap();
+                drop(git);
 
-                    if releases.contains(&self.input_txt.value)
-                        || rem_releases.contains(&self.input_txt.value)
-                    {
-                        self.popup_message = Some("Release already exists".to_string());
-                        self.input_txt.value.clear();
-                    } else {
-                        let (tx, rx) = mpsc::channel();
-                        let tx_err = tx.clone();
+                if releases.contains(&self.input_txt.value)
+                    || rem_releases.contains(&self.input_txt.value)
+                {
+                    self.popup_message = Some("Release already exists".to_string());
+                    self.input_txt.value.clear();
+                } else {
+                    let (tx, rx) = mpsc::channel();
+                    let tx_err = tx.clone();
 
-                        self.tx = Some(tx.clone());
-                        self.rx = Some(rx);
+                    self.tx = Some(tx.clone());
+                    self.rx = Some(rx);
 
-                        let name = self.input_txt.value.clone();
-                        self.worker = Some(thread::spawn(move || if let Err(e) = release_start(&name, tx) { tx_err.send(format!("{}", e)).unwrap() }));
+                    let name = self.input_txt.value.clone();
+                    self.worker = Some(thread::spawn(move || {
+                        if let Err(e) = release_start(&name, tx) {
+                            tx_err.send(format!("{}", e)).unwrap()
+                        }
+                    }));
 
-                        self.state = StartProcState::Creating;
-                    }
+                    self.state = StartProcState::Creating;
                 }
+            }
 
             KeyCode::Char(c)
                 if self.state == StartProcState::EnterName
-                    && (c.is_ascii_alphanumeric() || c == '-' || c == '.') => {
-                        self.input_txt.value.push(c);
-                    }
+                    && (c.is_ascii_alphanumeric() || c == '-' || c == '.') =>
+            {
+                self.input_txt.value.push(c);
+            }
 
             KeyCode::Backspace
-                if self.state == StartProcState::EnterName
-                    && !self.input_txt.value.is_empty() => {
-                        self.input_txt.value.pop();
-                    }
+                if self.state == StartProcState::EnterName && !self.input_txt.value.is_empty() =>
+            {
+                self.input_txt.value.pop();
+            }
 
             _ => {}
         }

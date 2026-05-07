@@ -1,5 +1,5 @@
 use std::{
-    sync::{mpsc, Arc, Mutex},
+    sync::{Arc, Mutex, mpsc},
     thread::{self, JoinHandle},
 };
 
@@ -7,22 +7,24 @@ use crate::{
     git::GitWrapper,
     logic::bugfix::bugfix_start,
     ui::{
+        AppState, UiIface,
         widgets::{
             popup::Popup,
             text_input::{InputState, TextInput},
         },
-        AppState, UiIface,
     },
 };
 
 use ratatui::{
     crossterm::event::KeyCode,
+    layout::{Constraint, Layout},
     prelude::{Frame, Rect},
     widgets::Paragraph,
 };
 
 #[derive(PartialEq)]
 enum StartProcState {
+    Fetching,
     EnterName,
     Creating,
     Finished,
@@ -42,8 +44,10 @@ impl BugfixStart {
     pub fn new() -> Self {
         Self {
             name: InputState::new(""),
-            state: StartProcState::EnterName,
-            messages: Arc::new(Mutex::new(Vec::new())),
+            state: StartProcState::Fetching,
+            messages: Arc::new(Mutex::new(
+                ["Fetching from remotes...".to_string()].to_vec(),
+            )),
             popup_message: None,
             worker: None,
             rx: None,
@@ -64,8 +68,12 @@ impl UiIface for BugfixStart {
             .map(|s| s.as_str())
             .collect::<Vec<_>>()
             .join("\n");
+        let size = messages.len();
 
         drop(messages);
+
+        let layout = Layout::vertical([Constraint::Length(size as u16), Constraint::Min(0)]);
+        let [msg_area, input_area] = body.layout(&layout);
 
         match self.state {
             StartProcState::EnterName => {
@@ -77,18 +85,18 @@ impl UiIface for BugfixStart {
 
                 self.set_text(footer_txt, footer, frame);
             }
-            StartProcState::Creating => {}
             StartProcState::Finished => {
                 self.set_text("Esc: back".to_string(), footer, frame);
             }
+            _ => (),
         }
 
         let widget = Paragraph::new(text);
-        frame.render_widget(widget, body);
+        frame.render_widget(widget, msg_area);
 
         if self.state == StartProcState::EnterName {
             let text_input = TextInput::new("Enter bugfix name");
-            frame.render_stateful_widget(text_input, body, &mut self.name);
+            frame.render_stateful_widget(text_input, input_area, &mut self.name);
 
             if let Some(popup_message) = &self.popup_message {
                 let popup = Popup::new("Error", popup_message);
@@ -98,24 +106,40 @@ impl UiIface for BugfixStart {
     }
 
     fn tick(&mut self) {
-        if self.state == StartProcState::Creating {
-            let mut messages = self.messages.lock().unwrap();
-            if let Some(rx) = &self.rx {
-                while let Ok(msg) = rx.try_recv() {
-                    messages.push(msg.clone());
+        let mut messages = self.messages.lock().unwrap();
+        match self.state {
+            StartProcState::Fetching => {
+                if let Ok(git) = GitWrapper::global().lock()
+                    && git.fetch(true, true).is_ok()
+                {
+                    self.state = StartProcState::EnterName;
+                    return;
+                }
+
+                messages.push("Could not fetch from remote".to_string());
+                self.state = StartProcState::Finished;
+            }
+            StartProcState::Creating => {
+                let mut messages = self.messages.lock().unwrap();
+                if let Some(rx) = &self.rx {
+                    while let Ok(msg) = rx.try_recv() {
+                        messages.push(msg.clone());
+                    }
+                }
+                drop(messages);
+
+                let finished = self
+                    .worker
+                    .as_ref()
+                    .map(|t| t.is_finished())
+                    .unwrap_or(false);
+                if finished {
+                    self.state = StartProcState::Finished
                 }
             }
-            drop(messages);
-
-            let finished = self
-                .worker
-                .as_ref()
-                .map(|t| t.is_finished())
-                .unwrap_or(false);
-            if finished {
-                self.state = StartProcState::Finished
-            }
+            _ => {}
         }
+        drop(messages);
     }
 
     fn handle_input(&mut self, key: KeyCode) -> Option<AppState> {
@@ -127,7 +151,7 @@ impl UiIface for BugfixStart {
                     if self.state == StartProcState::EnterName
                         || self.state == StartProcState::Finished
                     {
-                        return Some(AppState::BugfixList);
+                        return Some(AppState::MainMenu);
                     }
                 }
             }

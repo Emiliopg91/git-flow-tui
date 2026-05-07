@@ -120,37 +120,32 @@ impl UiIface for ReleaseFinish {
 
     fn handle_input(&mut self, key: KeyCode) -> Option<AppState> {
         match key {
-            KeyCode::Esc
-                if self.state != FinishProcState::Finishing => {
-                    return Some(AppState::ReleaseList);
-                }
+            KeyCode::Esc if self.state != FinishProcState::Finishing => {
+                return Some(AppState::MainMenu);
+            }
 
-            KeyCode::Enter
-                if self.state == FinishProcState::Confirm => {
-                    if self.entry.selected() == 0 {
-                        return Some(AppState::ReleaseList);
-                    } else {
-                        let (tx, rx) = mpsc::channel();
-                        let tx_err = tx.clone();
+            KeyCode::Enter if self.state == FinishProcState::Confirm => {
+                if self.entry.selected() == 0 {
+                    return Some(AppState::MainMenu);
+                } else {
+                    let (tx, rx) = mpsc::channel();
+                    let tx_err = tx.clone();
 
-                        self.tx = Some(tx.clone());
-                        self.rx = Some(rx);
+                    self.tx = Some(tx.clone());
+                    self.rx = Some(rx);
 
-                        let name = self.name.clone();
-                        self.worker =
-                            Some(thread::spawn(move || if let Err(e) = release_finish(&name, tx) { tx_err.send(format!("{}", e)).unwrap() }));
+                    let name = self.name.clone();
+                    self.worker = Some(thread::spawn(move || {
+                        if let Err(e) = release_finish(&name, tx) {
+                            tx_err.send(format!("{}", e)).unwrap()
+                        }
+                    }));
 
-                        self.state = FinishProcState::Finishing;
-                    }
+                    self.state = FinishProcState::Finishing;
                 }
-            KeyCode::Left
-                if self.state == FinishProcState::Confirm => {
-                    self.entry.select_previous()
-                }
-            KeyCode::Right
-                if self.state == FinishProcState::Confirm => {
-                    self.entry.select_next()
-                }
+            }
+            KeyCode::Left if self.state == FinishProcState::Confirm => self.entry.select_previous(),
+            KeyCode::Right if self.state == FinishProcState::Confirm => self.entry.select_next(),
 
             _ => {}
         }

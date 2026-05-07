@@ -1,31 +1,33 @@
-use std::process::exit;
+use std::{ops::Add, process::exit};
 
 use ratatui::{
+    Frame,
     crossterm::{
         cursor::Show,
         event::KeyCode,
         execute,
-        terminal::{disable_raw_mode, LeaveAlternateScreen},
+        terminal::{LeaveAlternateScreen, disable_raw_mode},
     },
-    layout::Rect,
+    layout::{Offset, Rect},
     style::{Color, Modifier},
-    widgets::{List, ListState},
-    Frame,
+    widgets::Tabs,
 };
 
 use crate::{
     others::exit_code::ExitCode,
-    ui::{AppState, UiIface},
+    ui::{AppState, UiIface, bugfix::BugfixList, feature::FeatureList, release::ReleaseList},
 };
 
 pub struct MainMenu {
-    entry: ListState,
+    tab: usize,
+    page: Box<dyn UiIface>,
 }
 
 impl MainMenu {
     pub fn new() -> Self {
         Self {
-            entry: ListState::default().with_selected(Some(0)),
+            tab: 0,
+            page: Box::new(FeatureList::new()),
         }
     }
 }
@@ -38,35 +40,54 @@ impl UiIface for MainMenu {
                 let _ = execute!(std::io::stdout(), LeaveAlternateScreen, Show);
                 exit(ExitCode::Ok.code());
             }
+            /*
             KeyCode::Enter => {
                 return match self.entry.selected() {
-                    Some(0) => Some(AppState::FeatureList),
-                    Some(1) => Some(AppState::ReleaseList),
-                    Some(2) => Some(AppState::BugfixList),
+                    Some(0) => Some(AppState::MainMenu),
+                    Some(1) => Some(AppState::MainMenu),
+                    Some(2) => Some(AppState::MainMenu),
                     Some(_) => None,
                     None => None,
+                };
+            }
+            */
+            KeyCode::Left | KeyCode::Right => {
+                let old_tab = self.tab;
+                if key == KeyCode::Left {
+                    self.tab = self.tab.saturating_sub(1);
+                } else {
+                    self.tab = self.tab.add(1).min(2);
+                }
+
+                if old_tab != self.tab {
+                    self.page = match self.tab {
+                        0 => Box::new(FeatureList::new()),
+                        1 => Box::new(ReleaseList::new()),
+                        2 => Box::new(BugfixList::new()),
+                        _ => unreachable!(),
+                    }
                 }
             }
-            KeyCode::Up => self.entry.select_previous(),
-            KeyCode::Down => self.entry.select_next(),
-            _ => (),
+            _ => return self.page.handle_input(key),
         }
 
         None
     }
 
     fn render(&mut self, header: Rect, body: Rect, footer: Rect, frame: &mut Frame) {
-        let list = List::new(["Feature", "Release", "Bugfix", "Hotfix"])
+        let tabs = Tabs::new(vec!["Features", "Releases", "Bugfixes"])
             .style(Color::White)
             .highlight_style(Modifier::REVERSED)
-            .highlight_symbol(" ");
+            .select(self.tab)
+            .divider("-")
+            .padding(" ", " ");
+        frame.render_widget(tabs, body + Offset::new(1, -1));
 
-        frame.render_stateful_widget(list, body, &mut self.entry);
+        self.page.render(header, body, footer, frame);
 
-        self.set_text("Main menu".to_string(), header, frame);
-
+        self.set_text("Main Menu".to_string(), header, frame);
         self.set_text(
-            "Up/Down: navigate | Enter: go to selection | Esc: exit".to_string(),
+            "Arrows: navigate | +: create | Del: finish | Esc: exit".to_string(),
             footer,
             frame,
         );

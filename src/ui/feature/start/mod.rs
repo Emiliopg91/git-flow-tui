@@ -1,5 +1,5 @@
 use std::{
-    sync::{mpsc, Arc, Mutex},
+    sync::{Arc, Mutex, mpsc},
     thread::{self, JoinHandle},
 };
 
@@ -7,11 +7,11 @@ use crate::{
     git::GitWrapper,
     logic::feature::feature_start,
     ui::{
+        AppState, UiIface,
         widgets::{
             popup::Popup,
             text_input::{InputState, TextInput},
         },
-        AppState, UiIface,
     },
 };
 
@@ -23,6 +23,7 @@ use ratatui::{
 
 #[derive(PartialEq)]
 enum StartProcState {
+    Fetching,
     EnterName,
     Creating,
     Finished,
@@ -42,8 +43,10 @@ impl FeatureStart {
     pub fn new() -> Self {
         Self {
             name: InputState::new(""),
-            state: StartProcState::EnterName,
-            messages: Arc::new(Mutex::new(Vec::new())),
+            state: StartProcState::Fetching,
+            messages: Arc::new(Mutex::new(
+                ["Fetching from remotes...".to_string()].to_vec(),
+            )),
             popup_message: None,
             worker: None,
             rx: None,
@@ -79,10 +82,10 @@ impl UiIface for FeatureStart {
 
                 self.set_text(footer_txt, footer, frame);
             }
-            StartProcState::Creating => {}
             StartProcState::Finished => {
                 self.set_text("Esc: back".to_string(), footer, frame);
             }
+            _ => (),
         }
 
         let widget = Paragraph::new(text);
@@ -100,24 +103,37 @@ impl UiIface for FeatureStart {
     }
 
     fn tick(&mut self) {
-        if self.state == StartProcState::Creating {
-            let mut messages = self.messages.lock().unwrap();
-            if let Some(rx) = &self.rx {
-                while let Ok(msg) = rx.try_recv() {
-                    messages.push(msg.clone());
+        let mut messages = self.messages.lock().unwrap();
+        match self.state {
+            StartProcState::Fetching => {
+                if let Ok(git) = GitWrapper::global().lock()
+                    && git.fetch(true, true).is_ok()
+                {
+                    self.state = StartProcState::EnterName;
+                    return;
+                }
+                messages.push("Could not fetch from remote".to_string());
+                self.state = StartProcState::Finished;
+            }
+            StartProcState::Creating => {
+                if let Some(rx) = &self.rx {
+                    while let Ok(msg) = rx.try_recv() {
+                        messages.push(msg.clone());
+                    }
+                }
+
+                let finished = self
+                    .worker
+                    .as_ref()
+                    .map(|t| t.is_finished())
+                    .unwrap_or(false);
+                if finished {
+                    self.state = StartProcState::Finished
                 }
             }
-            drop(messages);
-
-            let finished = self
-                .worker
-                .as_ref()
-                .map(|t| t.is_finished())
-                .unwrap_or(false);
-            if finished {
-                self.state = StartProcState::Finished
-            }
+            _ => (),
         }
+        drop(messages);
     }
 
     fn handle_input(&mut self, key: KeyCode) -> Option<AppState> {
@@ -129,7 +145,7 @@ impl UiIface for FeatureStart {
                     if self.state == StartProcState::EnterName
                         || self.state == StartProcState::Finished
                     {
-                        return Some(AppState::FeatureList);
+                        return Some(AppState::MainMenu);
                     }
                 }
             }

@@ -15,21 +15,18 @@ use ratatui::{
 };
 
 use crate::ui::{
-    bugfix::{BugfixList, finish::BugfixFinish, start::BugfixStart},
-    feature::{FeatureList, finish::FeatureFinish, start::FeatureStart},
+    bugfix::{finish::BugfixFinish, start::BugfixStart},
+    feature::{finish::FeatureFinish, start::FeatureStart},
     main_menu::MainMenu,
-    release::{ReleaseList, finish::ReleaseFinish, start::ReleaseStart},
+    release::{finish::ReleaseFinish, start::ReleaseStart},
 };
 
 pub enum AppState {
     MainMenu,
-    FeatureList,
     FeatureStart,
     FeatureFinish,
-    ReleaseList,
     ReleaseStart,
     ReleaseFinish,
-    BugfixList,
     BugfixStart,
     BugfixFinish,
     //    Hotfix,
@@ -49,14 +46,16 @@ pub trait UiIface {
 
 pub struct App {
     state: AppState,
-    page: Box<dyn UiIface>,
+    menu_page: Box<dyn UiIface>,
+    page: Option<Box<dyn UiIface>>,
 }
 
 impl App {
     pub fn new() -> Self {
         Self {
             state: AppState::MainMenu,
-            page: Box::new(MainMenu::new()),
+            menu_page: Box::new(MainMenu::new()),
+            page: None,
         }
     }
 }
@@ -70,24 +69,32 @@ pub fn main_loop() -> color_eyre::Result<()> {
         loop {
             if event::poll(Duration::from_millis(50))?
                 && let Some(key) = event::read()?.as_key_press_event()
-                && let Some(next) = app.page.handle_input(key.code)
             {
-                app.state = next;
-                match app.state {
-                    AppState::MainMenu => app.page = Box::new(MainMenu::new()),
-                    AppState::FeatureList => app.page = Box::new(FeatureList::new()),
-                    AppState::FeatureStart => app.page = Box::new(FeatureStart::new()),
-                    AppState::FeatureFinish => app.page = Box::new(FeatureFinish::new()),
-                    AppState::ReleaseList => app.page = Box::new(ReleaseList::new()),
-                    AppState::ReleaseStart => app.page = Box::new(ReleaseStart::new()),
-                    AppState::ReleaseFinish => app.page = Box::new(ReleaseFinish::new()),
-                    AppState::BugfixList => app.page = Box::new(BugfixList::new()),
-                    AppState::BugfixStart => app.page = Box::new(BugfixStart::new()),
-                    AppState::BugfixFinish => app.page = Box::new(BugfixFinish::new()),
+                let s_next: Option<AppState>;
+                if let Some(page) = app.page.as_mut() {
+                    s_next = page.handle_input(key.code);
+                } else {
+                    s_next = app.menu_page.handle_input(key.code);
+                }
+                if let Some(next) = s_next {
+                    app.state = next;
+                    match app.state {
+                        AppState::FeatureStart => app.page = Some(Box::new(FeatureStart::new())),
+                        AppState::FeatureFinish => app.page = Some(Box::new(FeatureFinish::new())),
+                        AppState::ReleaseStart => app.page = Some(Box::new(ReleaseStart::new())),
+                        AppState::ReleaseFinish => app.page = Some(Box::new(ReleaseFinish::new())),
+                        AppState::BugfixStart => app.page = Some(Box::new(BugfixStart::new())),
+                        AppState::BugfixFinish => app.page = Some(Box::new(BugfixFinish::new())),
+                        _ => app.page = None,
+                    }
                 }
             }
 
-            app.page.tick();
+            if let Some(page) = app.page.as_mut() {
+                page.tick();
+            } else {
+                app.menu_page.tick();
+            }
 
             terminal.draw(|frame| render(frame, &mut app))?;
         }
@@ -126,5 +133,9 @@ fn render(frame: &mut Frame, app: &mut App) {
         horizontal: 1,
     });
 
-    app.page.render(header_area, inner, footer_area, frame);
+    if let Some(page) = app.page.as_mut() {
+        page.render(header_area, inner, footer_area, frame);
+    } else {
+        app.menu_page.render(header_area, inner, footer_area, frame);
+    }
 }

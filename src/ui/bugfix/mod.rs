@@ -28,7 +28,7 @@ impl BugfixList {
 }
 
 impl UiIface for BugfixList {
-    fn render(&mut self, header: Rect, body: Rect, footer: Rect, frame: &mut Frame) {
+    fn render(&mut self, _header: Rect, body: Rect, _footer: Rect, frame: &mut Frame) {
         self.list = Some(GitWrapper::global().lock().unwrap().get_bugfixes().unwrap());
 
         let list = List::new(self.list.clone().unwrap())
@@ -37,14 +37,6 @@ impl UiIface for BugfixList {
             .highlight_symbol(" ");
 
         frame.render_stateful_widget(list, body, &mut self.state);
-
-        self.set_text("Bugfix management".to_string(), header, frame);
-
-        self.set_text(
-            "+: start new bugfix | del: finish bugfix | Esc: back".to_string(),
-            footer,
-            frame,
-        );
     }
 
     fn handle_input(&mut self, key: KeyCode) -> Option<AppState> {
@@ -56,15 +48,16 @@ impl UiIface for BugfixList {
             KeyCode::Delete => {
                 if let Some(selected) = self.state.selected()
                     && let Some(list) = &self.list
-                        && let Some(branch) = list.get(selected) {
-                            WHITEBOARD
-                                .get()
-                                .unwrap()
-                                .lock()
-                                .unwrap()
-                                .insert("branch".to_string(), branch.clone());
-                            return Some(AppState::BugfixFinish);
-                        }
+                    && let Some(branch) = list.get(selected)
+                {
+                    WHITEBOARD
+                        .get()
+                        .unwrap()
+                        .lock()
+                        .unwrap()
+                        .insert("branch".to_string(), branch.clone());
+                    return Some(AppState::BugfixFinish);
+                }
             }
             _ => (),
         }
