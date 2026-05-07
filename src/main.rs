@@ -13,6 +13,7 @@ use clap::{Parser, ValueEnum};
 use crate::{
     git::{GitWrapper, errors::GitError},
     logic::{
+        bugfix::{bugfix_finish, bugfix_start},
         feature::{feature_finish, feature_start},
         hotfix::{hotfix_finish, hotfix_start},
         release::{release_finish, release_start},
@@ -85,7 +86,8 @@ fn main() -> Result<()> {
             (BranchKind::Release, Action::Finish) => Some(release_finish),
             (BranchKind::Hotfix, Action::Start) => Some(hotfix_start),
             (BranchKind::Hotfix, Action::Finish) => Some(hotfix_finish),
-            (_, _) => None,
+            (BranchKind::Bugfix, Action::Start) => Some(bugfix_start),
+            (BranchKind::Bugfix, Action::Finish) => Some(bugfix_finish),
         };
 
         if let Some(fnc) = function {

@@ -5,7 +5,7 @@ use crate::{
     logic::pipeline::{LogicPipeline, StepKind},
 };
 
-pub fn bugfix_start(name: &String, sender: Sender<String>) -> Result<(), GitError> {
+pub fn bugfix_start(name: &str, sender: Sender<String>) -> Result<(), GitError> {
     let branch = format!("bugfix/{}", name);
     let send = |msg: &str| {
         let _ = sender.send(msg.into());
@@ -29,7 +29,7 @@ pub fn bugfix_start(name: &String, sender: Sender<String>) -> Result<(), GitErro
     Ok(())
 }
 
-pub fn bugfix_finish(name: &String, sender: Sender<String>) -> Result<(), GitError> {
+pub fn bugfix_finish(name: &str, sender: Sender<String>) -> Result<(), GitError> {
     let branch = format!("bugfix/{}", name);
     let send = |msg: &str| {
         let _ = sender.send(msg.into());
