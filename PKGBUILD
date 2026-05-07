@@ -3,7 +3,7 @@ pkgver=0.1.0
 pkgrel=1
 pkgdesc='Terminal UI for gitflow'
 arch=('x86_64')
-url='https://github.com/Emiliopg91/aur-check-rebuild'
+url="https://github.com/Emiliopg91/${pkgname}"
 license=('GPL-2')
 depends=(
   'brotli'
@@ -18,7 +18,8 @@ depends=(
   'zstd'
 )
 makedepends=(
-  rust
+  'rust'
+  'pkg-config' 
 )
 source=(
   "git+$url.git#tag=$pkgver-$pkgrel"
@@ -28,6 +29,9 @@ sha256sums=(
 )
 
 build() {
+  export LIBSSH2_SYS_USE_PKG_CONFIG=1
+  export OPENSSL_NO_VENDOR=1         
+
   cd "$srcdir/${pkgname}"
   cargo build --release
 }

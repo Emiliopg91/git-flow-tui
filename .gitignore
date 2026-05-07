@@ -1,2 +1,6 @@
 /target
 /Cargo.lock
+/*.pkg.tar.zst
+/git-flow-tui
+/src/git-flow-tui
+/pkg
