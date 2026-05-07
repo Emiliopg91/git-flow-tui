@@ -1,0 +1,16 @@
+[package]
+name = "git-flow-tui"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+color-eyre = "0.6.5"
+git2 = "0.20.4"
+ratatui = "0.30.0"
+
+[profile.release]
+lto = "fat"
+codegen-units = 1
+strip = "symbols"
+panic = "abort"
+opt-level = 3

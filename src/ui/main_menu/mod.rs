@@ -1,0 +1,95 @@
+use std::{ops::Add, process::exit};
+
+use ratatui::{
+    Frame,
+    crossterm::{
+        cursor::Show,
+        event::KeyCode,
+        execute,
+        terminal::{LeaveAlternateScreen, disable_raw_mode},
+    },
+    layout::{Offset, Rect},
+    style::{Color, Modifier},
+    widgets::Tabs,
+};
+
+use crate::{
+    others::exit_code::ExitCode,
+    ui::{AppState, UiIface, bugfix::BugfixList, feature::FeatureList, release::ReleaseList},
+};
+
+pub struct MainMenu {
+    tab: usize,
+    page: Box<dyn UiIface>,
+}
+
+impl MainMenu {
+    pub fn new() -> Self {
+        Self {
+            tab: 0,
+            page: Box::new(FeatureList::new()),
+        }
+    }
+}
+
+impl UiIface for MainMenu {
+    fn handle_input(&mut self, key: ratatui::crossterm::event::KeyCode) -> Option<AppState> {
+        match key {
+            KeyCode::Esc | KeyCode::Char('q') | KeyCode::Char('Q') => {
+                let _ = disable_raw_mode();
+                let _ = execute!(std::io::stdout(), LeaveAlternateScreen, Show);
+                exit(ExitCode::Ok.code());
+            }
+            /*
+            KeyCode::Enter => {
+                return match self.entry.selected() {
+                    Some(0) => Some(AppState::MainMenu),
+                    Some(1) => Some(AppState::MainMenu),
+                    Some(2) => Some(AppState::MainMenu),
+                    Some(_) => None,
+                    None => None,
+                };
+            }
+            */
+            KeyCode::Left | KeyCode::Right => {
+                let old_tab = self.tab;
+                if key == KeyCode::Left {
+                    self.tab = self.tab.saturating_sub(1);
+                } else {
+                    self.tab = self.tab.add(1).min(2);
+                }
+
+                if old_tab != self.tab {
+                    self.page = match self.tab {
+                        0 => Box::new(FeatureList::new()),
+                        1 => Box::new(ReleaseList::new()),
+                        2 => Box::new(BugfixList::new()),
+                        _ => unreachable!(),
+                    }
+                }
+            }
+            _ => return self.page.handle_input(key),
+        }
+
+        None
+    }
+
+    fn render(&mut self, header: Rect, body: Rect, footer: Rect, frame: &mut Frame) {
+        let tabs = Tabs::new(vec!["Features", "Releases", "Bugfixes"])
+            .style(Color::White)
+            .highlight_style(Modifier::REVERSED)
+            .select(self.tab)
+            .divider("-")
+            .padding(" ", " ");
+        frame.render_widget(tabs, body + Offset::new(1, -1));
+
+        self.page.render(header, body, footer, frame);
+
+        self.set_text("Main Menu".to_string(), header, frame);
+        self.set_text(
+            "Arrows: navigate | +: create | Del: finish | Esc: exit".to_string(),
+            footer,
+            frame,
+        );
+    }
+}
