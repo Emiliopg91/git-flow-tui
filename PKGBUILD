@@ -1,5 +1,5 @@
 pkgname=git-flow-tui
-pkgver=1.0.1
+pkgver=1.0.2
 pkgrel=1
 pkgdesc='Terminal UI for gitflow'
 arch=('x86_64')
