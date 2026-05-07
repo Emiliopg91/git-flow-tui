@@ -15,7 +15,10 @@ use ratatui::{
 
 use crate::{
     others::exit_code::ExitCode,
-    ui::{AppState, UiIface, bugfix::BugfixList, feature::FeatureList, release::ReleaseList},
+    ui::{
+        AppState, UiIface, bugfix::BugfixList, feature::FeatureList, hotfix::HotfixList,
+        release::ReleaseList,
+    },
 };
 
 pub struct MainMenu {
@@ -40,23 +43,12 @@ impl UiIface for MainMenu {
                 let _ = execute!(std::io::stdout(), LeaveAlternateScreen, Show);
                 exit(ExitCode::Ok.code());
             }
-            /*
-            KeyCode::Enter => {
-                return match self.entry.selected() {
-                    Some(0) => Some(AppState::MainMenu),
-                    Some(1) => Some(AppState::MainMenu),
-                    Some(2) => Some(AppState::MainMenu),
-                    Some(_) => None,
-                    None => None,
-                };
-            }
-            */
             KeyCode::Left | KeyCode::Right => {
                 let old_tab = self.tab;
                 if key == KeyCode::Left {
                     self.tab = self.tab.saturating_sub(1);
                 } else {
-                    self.tab = self.tab.add(1).min(2);
+                    self.tab = self.tab.add(1).min(3);
                 }
 
                 if old_tab != self.tab {
@@ -64,6 +56,7 @@ impl UiIface for MainMenu {
                         0 => Box::new(FeatureList::new()),
                         1 => Box::new(ReleaseList::new()),
                         2 => Box::new(BugfixList::new()),
+                        3 => Box::new(HotfixList::new()),
                         _ => unreachable!(),
                     }
                 }
@@ -75,7 +68,7 @@ impl UiIface for MainMenu {
     }
 
     fn render(&mut self, header: Rect, body: Rect, footer: Rect, frame: &mut Frame) {
-        let tabs = Tabs::new(vec!["Features", "Releases", "Bugfixes"])
+        let tabs = Tabs::new(vec!["Features", "Releases", "Bugfixes", "Hotfixes"])
             .style(Color::White)
             .highlight_style(Modifier::REVERSED)
             .select(self.tab)

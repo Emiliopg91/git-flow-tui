@@ -20,13 +20,14 @@ fn main() -> Result<()> {
         exit(ExitCode::NotAGitRepository.code());
     });
 
-    if !GitWrapper::global()
-        .lock()
-        .unwrap()
-        .get_changes()
-        .unwrap()
-        .is_empty()
-    {
+    let git = GitWrapper::global().lock().unwrap();
+    let has_changes = git.has_changes().unwrap();
+    let main_branch = git.main_branch.clone();
+    drop(git);
+
+    println!("Primary branch detected: {}", main_branch);
+
+    if has_changes {
         eprintln!("Found uncommited changes on repository:");
         eprintln!("Fix it and try again.");
         exit(ExitCode::UncommitedChanges.code());

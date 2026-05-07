@@ -1,5 +1,6 @@
 mod bugfix;
 mod feature;
+mod hotfix;
 mod main_menu;
 mod release;
 mod widgets;
@@ -17,6 +18,7 @@ use ratatui::{
 use crate::ui::{
     bugfix::{finish::BugfixFinish, start::BugfixStart},
     feature::{finish::FeatureFinish, start::FeatureStart},
+    hotfix::{finish::HotfixFinish, start::HotfixStart},
     main_menu::MainMenu,
     release::{finish::ReleaseFinish, start::ReleaseStart},
 };
@@ -29,6 +31,8 @@ pub enum AppState {
     ReleaseFinish,
     BugfixStart,
     BugfixFinish,
+    HotfixStart,
+    HotfixFinish,
     //    Hotfix,
 }
 
@@ -85,7 +89,9 @@ pub fn main_loop() -> color_eyre::Result<()> {
                         AppState::ReleaseFinish => app.page = Some(Box::new(ReleaseFinish::new())),
                         AppState::BugfixStart => app.page = Some(Box::new(BugfixStart::new())),
                         AppState::BugfixFinish => app.page = Some(Box::new(BugfixFinish::new())),
-                        _ => app.page = None,
+                        AppState::HotfixStart => app.page = Some(Box::new(HotfixStart::new())),
+                        AppState::HotfixFinish => app.page = Some(Box::new(HotfixFinish::new())),
+                        AppState::MainMenu => app.page = None,
                     }
                 }
             }

@@ -1,26 +1,21 @@
 use std::fmt;
 
-use git2::Error;
-
-#[derive(Debug)]
-pub enum GitOp {
-    Merge,
-    Checkout,
-    Pull,
-    Push,
-    Commit,
-    Tag,
-    Fetch,
-    Open,
-    Branch,
-    Status,
-    RevParse,
-}
-
 #[derive(Debug)]
 pub enum GitError {
-    GitError { op: GitOp, error: Error },
     NotAGitRepository,
+    CommandFailed { command: String, code: i32 },
+    Io(std::io::Error),
+    MergeFailed { branch: String },
+    CheckoutFailed { branch: String },
+    PullFailed { branch: String },
+    PushFailed { branch: String },
+    PushTagsFailed,
+    BranchFailed { branch: String },
+    BranchDeletionFailed { branch: String },
+    ListBranchFailed,
+    CommitFailed { branch: String },
+    TagFailed { tag: String },
+    FetchFailed,
 }
 
 impl fmt::Display for GitError {
@@ -29,18 +24,51 @@ impl fmt::Display for GitError {
             GitError::NotAGitRepository => {
                 write!(f, "Not a git repository")
             }
-            GitError::GitError { op, error } => {
-                write!(f, "Error while {:?}: {}", op, error)
+            GitError::CommandFailed { command, code } => {
+                write!(f, "Command '{}' failed ({})", command, code)
+            }
+            GitError::Io(err) => write!(f, "IO error: {}", err),
+            GitError::MergeFailed { branch } => {
+                write!(f, "Could not merge {} branch", branch)
+            }
+            GitError::CheckoutFailed { branch } => {
+                write!(f, "Could not checkout {} branch", branch)
+            }
+            GitError::PullFailed { branch } => {
+                write!(f, "Could not pull {} branch from remote", branch)
+            }
+            GitError::PushFailed { branch } => {
+                write!(f, "Could not push {} branch to remote", branch)
+            }
+            GitError::PushTagsFailed => {
+                write!(f, "Could not push tags")
+            }
+            GitError::BranchFailed { branch } => {
+                write!(f, "Could not create {} branch", branch)
+            }
+            GitError::ListBranchFailed => {
+                write!(f, "Could not list local branches.")
+            }
+            GitError::BranchDeletionFailed { branch } => {
+                write!(f, "Could not delete local branch {}", branch)
+            }
+            GitError::CommitFailed { branch } => {
+                write!(f, "Could not commit local branch {}", branch)
+            }
+            GitError::TagFailed { tag } => {
+                write!(f, "Could not create tag {}", tag)
+            }
+            GitError::FetchFailed => {
+                write!(f, "Could not fetch remotes")
             }
         }
     }
 }
-pub trait MapGitError<T> {
-    fn to_git_error(self, op: GitOp) -> Result<T, GitError>;
-}
 
-impl<T> MapGitError<T> for Result<T, Error> {
-    fn to_git_error(self, op: GitOp) -> Result<T, GitError> {
-        self.map_err(|e| GitError::GitError { op, error: e })
+impl std::error::Error for GitError {}
+
+impl From<std::io::Error> for GitError {
+    fn from(err: std::io::Error) -> Self {
+        GitError::Io(err)
     }
 }

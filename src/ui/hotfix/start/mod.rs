@@ -5,7 +5,7 @@ use std::{
 
 use crate::{
     git::GitWrapper,
-    logic::bugfix::bugfix_start,
+    logic::hotfix::hotfix_start,
     ui::{
         AppState, UiIface,
         widgets::{
@@ -30,7 +30,7 @@ enum StartProcState {
     Finished,
 }
 
-pub struct BugfixStart {
+pub struct HotfixStart {
     name: InputState,
     state: StartProcState,
     messages: Arc<Mutex<Vec<String>>>,
@@ -40,7 +40,7 @@ pub struct BugfixStart {
     tx: Option<mpsc::Sender<String>>,
 }
 
-impl BugfixStart {
+impl HotfixStart {
     pub fn new() -> Self {
         Self {
             name: InputState::new(""),
@@ -56,9 +56,9 @@ impl BugfixStart {
     }
 }
 
-impl UiIface for BugfixStart {
+impl UiIface for HotfixStart {
     fn render(&mut self, header: Rect, body: Rect, footer: Rect, frame: &mut Frame) {
-        self.set_text("Start bugfix".to_string(), header, frame);
+        self.set_text("Start hotfix".to_string(), header, frame);
 
         let messages = self.messages.lock().unwrap();
 
@@ -95,7 +95,7 @@ impl UiIface for BugfixStart {
         frame.render_widget(widget, msg_area);
 
         if self.state == StartProcState::EnterName {
-            let text_input = TextInput::new("Enter bugfix name");
+            let text_input = TextInput::new("Enter hotfix name");
             frame.render_stateful_widget(text_input, input_area, &mut self.name);
 
             if let Some(popup_message) = &self.popup_message {
@@ -156,12 +156,12 @@ impl UiIface for BugfixStart {
 
             KeyCode::Enter if self.state == StartProcState::EnterName => {
                 let git = GitWrapper::global().lock().unwrap();
-                let bugfixes = git.get_bugfixes().unwrap();
-                let rem_bugfixes = git.get_remote_bugfixes().unwrap();
+                let hotfixes = git.get_hotfixes().unwrap();
+                let rem_hotfixes = git.get_remote_hotfixes().unwrap();
                 drop(git);
 
-                if bugfixes.contains(&self.name.value) || rem_bugfixes.contains(&self.name.value) {
-                    self.popup_message = Some("Bugfix already exists".to_string());
+                if hotfixes.contains(&self.name.value) || rem_hotfixes.contains(&self.name.value) {
+                    self.popup_message = Some("Hotfix already exists".to_string());
                     self.name.value.clear();
                 } else {
                     let (tx, rx) = mpsc::channel();
@@ -172,7 +172,7 @@ impl UiIface for BugfixStart {
 
                     let name = self.name.value.clone();
                     self.worker = Some(thread::spawn(move || {
-                        if let Err(e) = bugfix_start(&name, tx) {
+                        if let Err(e) = hotfix_start(&name, tx) {
                             tx_err.send(format!("{}", e)).unwrap()
                         }
                     }));
