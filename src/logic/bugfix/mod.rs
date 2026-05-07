@@ -1,6 +1,6 @@
 use std::sync::mpsc::Sender;
 
-use crate::git::{errors::GitError, GitWrapper};
+use crate::git::{GitWrapper, errors::GitError};
 
 pub fn bugfix_start(name: &String, sender: Sender<String>) -> Result<(), GitError> {
     let branch = format!("bugfix/{}", name);

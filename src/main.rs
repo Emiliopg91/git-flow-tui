@@ -20,9 +20,14 @@ fn main() -> Result<()> {
         exit(ExitCode::NotAGitRepository.code());
     });
 
-    let has_changes = GitWrapper::global().lock().unwrap().has_changes().unwrap();
-    if has_changes {
-        eprintln!("Found uncommited changes on repository.");
+    if !GitWrapper::global()
+        .lock()
+        .unwrap()
+        .get_changes()
+        .unwrap()
+        .is_empty()
+    {
+        eprintln!("Found uncommited changes on repository:");
         eprintln!("Fix it and try again.");
         exit(ExitCode::UncommitedChanges.code());
     }
