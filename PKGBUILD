@@ -1,6 +1,6 @@
 pkgname=git-flow-tui
 pkgver=1.2.0
-pkgrel=1
+pkgrel=2
 pkgdesc='Terminal UI for gitflow with extended logic for CI/CD'
 arch=('x86_64')
 url="https://github.com/Emiliopg91/${pkgname}"
@@ -27,12 +27,16 @@ build() {
 }
 
 package() {
+  cd "$srcdir/${pkgname}"
+  
   #TUI
-  install -Dm755 "$srcdir/${pkgname}/target/release/${pkgname}" "$pkgdir/usr/bin/${pkgname}"
+  install -Dm755 "target/release/${pkgname}" "$pkgdir/usr/bin/${pkgname}"
   
   #CLI
   ln -s "${pkgname}" "$pkgdir/usr/bin/git-flow"
-  ./target/release/git-flow completion > git-flow.bash
+  install -Dm755 "target/release/${pkgname}" "target/release/cli"
+
+  ./target/release/cli completion > git-flow.bash
   install -Dm644 git-flow.bash \
       "$pkgdir/usr/share/bash-completion/completions/git-flow"
 }
