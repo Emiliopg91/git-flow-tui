@@ -158,7 +158,8 @@ fn main() -> Result<()> {
                     let (tx, rx) = mpsc::channel::<String>();
                     let worker = thread::spawn(move || {
                         if let Err(e) = fnc.1(&fnc.0, tx.clone()) {
-                            tx.send(format!("{}", e)).unwrap()
+                            tx.send(format!("{}", e)).unwrap();
+                            exit(1);
                         }
                     });
 

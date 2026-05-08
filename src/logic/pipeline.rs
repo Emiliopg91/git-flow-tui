@@ -71,7 +71,7 @@ impl LogicPipeline {
     pub fn execute_pipeline(steps: &[Step], sender: &Sender<String>) -> Result<(), GitError> {
         let t0 = Instant::now();
 
-        let _ = Self::send(sender, "  Starting pipeline");
+        Self::send(sender, "  Starting pipeline");
         let mut git = GitWrapper::global().lock().unwrap();
         for step in steps {
             match Self::execute_step(step, &mut git, sender) {
@@ -81,7 +81,7 @@ impl LogicPipeline {
                 }
             }
         }
-        let _ = Self::send(
+        Self::send(
             sender,
             &format!(
                 "  Pipeline finished after {:.3}",

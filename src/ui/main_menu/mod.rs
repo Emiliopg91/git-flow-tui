@@ -80,10 +80,9 @@ impl UiIface for MainMenu {
         self.page.render(header, body, footer, frame);
         {
             let git = GitWrapper::global().lock().unwrap();
-            let branch: Paragraph<'_> =
-                Paragraph::new(format!("  {} ", git.get_branch().to_string()))
-                    .style(Style::default().fg(Color::Gray))
-                    .alignment(Alignment::Center);
+            let branch: Paragraph<'_> = Paragraph::new(format!("  {} ", git.get_branch()))
+                .style(Style::default().fg(Color::Gray))
+                .alignment(Alignment::Center);
             frame.render_widget(branch, footer + Offset::new(0, -1));
         }
         self.set_text("Main Menu".to_string(), header, frame);

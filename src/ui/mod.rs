@@ -10,20 +10,17 @@ use std::time::Duration;
 use ratatui::{
     Frame,
     crossterm::event::{self, KeyCode},
-    layout::{Alignment, Constraint, Layout, Margin, Offset, Rect},
+    layout::{Alignment, Constraint, Layout, Margin, Rect},
     style::{Color, Style},
     widgets::{Block, Borders, Paragraph},
 };
 
-use crate::{
-    git::GitWrapper,
-    ui::{
-        bugfix::{finish::BugfixFinish, start::BugfixStart},
-        feature::{finish::FeatureFinish, start::FeatureStart},
-        hotfix::{finish::HotfixFinish, start::HotfixStart},
-        main_menu::MainMenu,
-        release::{finish::ReleaseFinish, start::ReleaseStart},
-    },
+use crate::ui::{
+    bugfix::{finish::BugfixFinish, start::BugfixStart},
+    feature::{finish::FeatureFinish, start::FeatureStart},
+    hotfix::{finish::HotfixFinish, start::HotfixStart},
+    main_menu::MainMenu,
+    release::{finish::ReleaseFinish, start::ReleaseStart},
 };
 
 pub enum AppState {

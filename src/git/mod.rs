@@ -105,9 +105,9 @@ impl GitWrapper {
     pub fn checkout(&mut self, branch: &str) -> Result<(), GitError> {
         let res = Self::run_git_command(["checkout", branch], false)?;
         if res.status != 0 {
-            return Err(GitError::CheckoutFailed {
+            Err(GitError::CheckoutFailed {
                 branch: branch.to_owned(),
-            });
+            })
         } else {
             self.cur_branch = branch.to_string();
             Ok(())
@@ -140,10 +140,10 @@ impl GitWrapper {
         let cur_branch = self.get_branch();
         let mut args = ["push".to_string()].to_vec();
 
-        if !self.get_remote_branches()?.contains(&cur_branch) {
+        if !self.get_remote_branches()?.contains(cur_branch) {
             args.push("--set-upstream".to_string());
             args.push("origin".to_string());
-            args.push(cur_branch.into());
+            args.push(cur_branch.clone());
         }
 
         let res = Self::run_git_command(&args, false)?;
@@ -168,9 +168,9 @@ impl GitWrapper {
     pub fn create_branch(&mut self, branch: &str) -> Result<(), GitError> {
         let res = Self::run_git_command(["checkout", "-b", branch], false)?;
         if res.status != 0 {
-            return Err(GitError::BranchFailed {
+            Err(GitError::BranchFailed {
                 branch: self.get_branch().into(),
-            });
+            })
         } else {
             self.cur_branch = branch.to_string();
             Ok(())
