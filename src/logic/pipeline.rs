@@ -1,4 +1,7 @@
-use std::sync::{MutexGuard, mpsc::Sender};
+use std::{
+    sync::{MutexGuard, mpsc::Sender},
+    time::Instant,
+};
 
 use crate::git::{GitWrapper, errors::GitError};
 
@@ -27,43 +30,43 @@ impl LogicPipeline {
         };
         match step {
             StepKind::CreateBranch { branch } => {
-                send(&format!("  Creating branch {}", branch));
+                send(&format!("    Creating branch {}", branch));
                 git.create_branch(branch)?;
             }
             StepKind::Checkout { branch } => {
                 if git.get_branch()? != *branch {
-                    send(&format!("  Checking out {} branch", branch));
+                    send(&format!("    Checking out {} branch", branch));
                     git.checkout(branch)?;
                 }
             }
             StepKind::Commit { message } => {
-                send(&format!("  Creating commit '{}'", message));
+                send(&format!("    Creating commit '{}'", message));
                 git.commit(message)?;
             }
             StepKind::DeleteBranch { branch } => {
-                send(&format!("  Deleting {} branch", branch));
+                send(&format!("    Deleting {} branch", branch));
                 git.delete_branch(branch)?;
             }
             StepKind::Merge { branch } => {
-                send(&format!("  Merging {} branch", branch));
+                send(&format!("    Merging {} branch", branch));
                 git.merge(branch)?;
             }
             StepKind::Pull => {
                 if git.get_remote_branches()?.contains(&git.get_branch()?) {
-                    send("  Pulling from remote");
+                    send("    Pulling from remote");
                     git.pull()?;
                 }
             }
             StepKind::Push => {
-                send("  Push to remote");
+                send("    Push to remote");
                 git.push()?;
             }
             StepKind::PushTags => {
-                send("  Push tags to remote");
+                send("    Push tags to remote");
                 git.push_tags()?;
             }
             StepKind::Tag { tag } => {
-                send(&format!("  Creating tag {}", tag));
+                send(&format!("    Creating tag {}", tag));
                 git.tag(tag)?;
             }
         }
@@ -72,6 +75,9 @@ impl LogicPipeline {
     }
 
     pub fn execute_pipeline(steps: &[StepKind], sender: Sender<String>) -> Result<(), GitError> {
+        let t0 = Instant::now();
+
+        let _ = sender.send("  Starting pipeline".to_string());
         for step in steps {
             let git = GitWrapper::global().lock().unwrap();
             match Self::execute_step(step, git, sender.clone()) {
@@ -81,6 +87,10 @@ impl LogicPipeline {
                 }
             }
         }
+        let _ = sender.send(format!(
+            "  Pipeline finished after {:.3}",
+            t0.elapsed().as_secs_f64()
+        ));
 
         Ok(())
     }
