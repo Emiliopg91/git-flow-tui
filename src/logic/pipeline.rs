@@ -1,7 +1,4 @@
-use std::{
-    sync::{MutexGuard, mpsc::Sender},
-    time::Instant,
-};
+use std::{sync::mpsc::Sender, time::Instant};
 
 use crate::git::{GitWrapper, errors::GitError};
 
@@ -22,51 +19,48 @@ pub struct LogicPipeline {}
 impl LogicPipeline {
     fn execute_step(
         step: &StepKind,
-        git: MutexGuard<'_, GitWrapper>,
-        sender: Sender<String>,
+        git: &mut GitWrapper,
+        sender: &Sender<String>,
     ) -> Result<(), GitError> {
-        let send = |msg: &str| {
-            let _ = sender.send(msg.into());
-        };
         match step {
             StepKind::CreateBranch { branch } => {
-                send(&format!("    Creating branch {}", branch));
+                Self::send(sender, &format!("    Creating branch {}", branch));
                 git.create_branch(branch)?;
             }
             StepKind::Checkout { branch } => {
-                if git.get_branch()? != *branch {
-                    send(&format!("    Checking out {} branch", branch));
+                if git.get_branch() != branch {
+                    Self::send(sender, &format!("    Checking out {} branch", branch));
                     git.checkout(branch)?;
                 }
             }
             StepKind::Commit { message } => {
-                send(&format!("    Creating commit '{}'", message));
+                Self::send(sender, &format!("    Creating commit '{}'", message));
                 git.commit(message)?;
             }
             StepKind::DeleteBranch { branch } => {
-                send(&format!("    Deleting {} branch", branch));
+                Self::send(sender, &format!("    Deleting {} branch", branch));
                 git.delete_branch(branch)?;
             }
             StepKind::Merge { branch } => {
-                send(&format!("    Merging {} branch", branch));
+                Self::send(sender, &format!("    Merging {} branch", branch));
                 git.merge(branch)?;
             }
             StepKind::Pull => {
-                if git.get_remote_branches()?.contains(&git.get_branch()?) {
-                    send("    Pulling from remote");
+                if git.get_remote_branches()?.contains(git.get_branch()) {
+                    Self::send(sender, "    Pulling from remote");
                     git.pull()?;
                 }
             }
             StepKind::Push => {
-                send("    Push to remote");
+                Self::send(sender, "    Push to remote");
                 git.push()?;
             }
             StepKind::PushTags => {
-                send("    Push tags to remote");
+                Self::send(sender, "    Push tags to remote");
                 git.push_tags()?;
             }
             StepKind::Tag { tag } => {
-                send(&format!("    Creating tag {}", tag));
+                Self::send(sender, &format!("    Creating tag {}", tag));
                 git.tag(tag)?;
             }
         }
@@ -74,24 +68,31 @@ impl LogicPipeline {
         Ok(())
     }
 
-    pub fn execute_pipeline(steps: &[StepKind], sender: Sender<String>) -> Result<(), GitError> {
+    pub fn execute_pipeline(steps: &[StepKind], sender: &Sender<String>) -> Result<(), GitError> {
         let t0 = Instant::now();
 
-        let _ = sender.send("  Starting pipeline".to_string());
+        let _ = Self::send(sender, "  Starting pipeline");
         for step in steps {
-            let git = GitWrapper::global().lock().unwrap();
-            match Self::execute_step(step, git, sender.clone()) {
+            let mut git = GitWrapper::global().lock().unwrap();
+            match Self::execute_step(step, &mut git, sender) {
                 Ok(_) => continue,
                 Err(e) => {
                     return Err(e);
                 }
             }
         }
-        let _ = sender.send(format!(
-            "  Pipeline finished after {:.3}",
-            t0.elapsed().as_secs_f64()
-        ));
+        let _ = Self::send(
+            sender,
+            &format!(
+                "  Pipeline finished after {:.3}",
+                t0.elapsed().as_secs_f64()
+            ),
+        );
 
         Ok(())
+    }
+
+    fn send(sender: &Sender<String>, msg: &str) {
+        let _ = sender.send(msg.to_string());
     }
 }

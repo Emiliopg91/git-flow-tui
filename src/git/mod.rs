@@ -1,8 +1,6 @@
 pub mod errors;
 
 use std::{
-    fs,
-    path::PathBuf,
     process::Command,
     sync::{Mutex, OnceLock},
 };
@@ -11,6 +9,7 @@ use crate::git::errors::GitError;
 
 pub struct GitWrapper {
     pub main_branch: String,
+    cur_branch: String,
 }
 
 pub struct GitCmdResult {
@@ -27,20 +26,31 @@ impl GitWrapper {
         GIT_WRAPPER_INST.get().unwrap()
     }
 
-    pub fn initialize(path_buf: PathBuf) -> Result<(), GitError> {
-        if !fs::exists(&path_buf)? {
+    pub fn initialize() -> Result<(), GitError> {
+        if Self::run_git_command(["status"], true).is_err() {
             return Err(GitError::NotAGitRepository);
         }
 
-        let res = Self::run_git_command(["symbolic-ref", "refs/remotes/origin/HEAD"], false)
+        let res = Self::run_git_command(["symbolic-ref", "refs/remotes/origin/HEAD"], true)
             .unwrap_or(GitCmdResult {
                 status: 0,
                 stdout: "main".to_string(),
                 stderr: "".to_string(),
             });
+        let main_branch = res.stdout.rsplit('/').next().unwrap_or("main").to_string();
+
+        let res2 = Self::run_git_command(["rev-parse", "--abbrev-ref", "HEAD"], true).unwrap_or(
+            GitCmdResult {
+                status: 0,
+                stdout: res.stdout,
+                stderr: "".to_string(),
+            },
+        );
+        let cur_branch = res2.stdout;
 
         let inst = Self {
-            main_branch: res.stdout.rsplit('/').next().unwrap_or("main").to_string(),
+            main_branch,
+            cur_branch,
         };
 
         GIT_WRAPPER_INST.get_or_init(|| Mutex::new(inst));
@@ -88,19 +98,20 @@ impl GitWrapper {
             .is_empty())
     }
 
-    pub fn get_branch(&self) -> Result<String, GitError> {
-        Ok(Self::run_git_command(["rev-parse", "--abbrev-ref", "HEAD"], true)?.stdout)
+    pub fn get_branch(&self) -> &String {
+        &self.cur_branch
     }
 
-    pub fn checkout(&self, branch: &str) -> Result<(), GitError> {
+    pub fn checkout(&mut self, branch: &str) -> Result<(), GitError> {
         let res = Self::run_git_command(["checkout", branch], false)?;
         if res.status != 0 {
             return Err(GitError::CheckoutFailed {
                 branch: branch.to_owned(),
             });
+        } else {
+            self.cur_branch = branch.to_string();
+            Ok(())
         }
-
-        Ok(())
     }
 
     pub fn merge(&self, branch: &str) -> Result<(), GitError> {
@@ -118,7 +129,7 @@ impl GitWrapper {
         let res = Self::run_git_command(["pull"], false)?;
         if res.status != 0 {
             return Err(GitError::PullFailed {
-                branch: self.get_branch()?,
+                branch: self.get_branch().into(),
             });
         }
 
@@ -126,19 +137,19 @@ impl GitWrapper {
     }
 
     pub fn push(&self) -> Result<(), GitError> {
-        let cur_branch = self.get_branch()?;
+        let cur_branch = self.get_branch();
         let mut args = ["push".to_string()].to_vec();
 
         if !self.get_remote_branches()?.contains(&cur_branch) {
             args.push("--set-upstream".to_string());
             args.push("origin".to_string());
-            args.push(self.get_branch()?);
+            args.push(cur_branch.into());
         }
 
         let res = Self::run_git_command(&args, false)?;
         if res.status != 0 {
             return Err(GitError::PushFailed {
-                branch: self.get_branch()?,
+                branch: self.get_branch().into(),
             });
         }
 
@@ -154,22 +165,23 @@ impl GitWrapper {
         Ok(())
     }
 
-    pub fn create_branch(&self, branch: &str) -> Result<(), GitError> {
+    pub fn create_branch(&mut self, branch: &str) -> Result<(), GitError> {
         let res = Self::run_git_command(["checkout", "-b", branch], false)?;
         if res.status != 0 {
             return Err(GitError::BranchFailed {
-                branch: self.get_branch()?,
+                branch: self.get_branch().into(),
             });
+        } else {
+            self.cur_branch = branch.to_string();
+            Ok(())
         }
-
-        Ok(())
     }
 
     pub fn delete_branch(&self, branch: &str) -> Result<(), GitError> {
         let res = Self::run_git_command(["branch", "-D", branch], false)?;
         if res.status != 0 {
             return Err(GitError::BranchDeletionFailed {
-                branch: self.get_branch()?,
+                branch: self.get_branch().into(),
             });
         }
 
@@ -289,7 +301,7 @@ impl GitWrapper {
         let res = Self::run_git_command(["commit", "--allow-empty", "-m", msg], false)?;
         if res.status != 0 {
             return Err(GitError::CommitFailed {
-                branch: self.get_branch()?,
+                branch: self.get_branch().into(),
             });
         }
 

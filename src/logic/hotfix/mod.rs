@@ -23,7 +23,7 @@ pub fn hotfix_start(name: &str, sender: Sender<String>) -> Result<(), GitError> 
             StepKind::Pull,
             StepKind::CreateBranch { branch },
         ],
-        sender.clone(),
+        &sender,
     )?;
 
     send("Hotfix started succesfully");
@@ -71,7 +71,7 @@ pub fn hotfix_finish(name: &str, sender: Sender<String>) -> Result<(), GitError>
                 branch: branch.clone(),
             },
         ],
-        sender.clone(),
+        &sender,
     )?;
 
     send("Hotfix finished succesfully");

@@ -22,7 +22,7 @@ pub fn feature_start(name: &str, sender: Sender<String>) -> Result<(), GitError>
             StepKind::Pull,
             StepKind::CreateBranch { branch },
         ],
-        sender.clone(),
+        &sender,
     )?;
 
     send("Feature started succesfully");
@@ -54,14 +54,14 @@ pub fn feature_finish(name: &str, sender: Sender<String>) -> Result<(), GitError
                 branch: branch.clone(),
             },
             StepKind::Commit {
-                message: format!("Merge after {} bugfix merge", name),
+                message: format!("Merge after {} feature merge", name),
             },
             StepKind::Push,
             StepKind::DeleteBranch {
                 branch: branch.clone(),
             },
         ],
-        sender.clone(),
+        &sender,
     )?;
 
     send("Feature finished succesfully");

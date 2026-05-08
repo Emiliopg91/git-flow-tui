@@ -22,7 +22,7 @@ pub fn release_start(name: &str, sender: Sender<String>) -> Result<(), GitError>
             StepKind::Pull,
             StepKind::CreateBranch { branch },
         ],
-        sender.clone(),
+        &sender,
     )?;
 
     send("Release started successfully");
@@ -71,7 +71,7 @@ pub fn release_finish(name: &str, sender: Sender<String>) -> Result<(), GitError
                 branch: branch.clone(),
             },
         ],
-        sender.clone(),
+        &sender,
     )?;
 
     send("Release finished successfully");

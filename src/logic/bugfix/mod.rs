@@ -21,7 +21,7 @@ pub fn bugfix_start(name: &str, sender: Sender<String>) -> Result<(), GitError> 
             StepKind::Pull,
             StepKind::CreateBranch { branch },
         ],
-        sender.clone(),
+        &sender,
     )?;
 
     send("Bugfix started succesfully");
@@ -59,7 +59,7 @@ pub fn bugfix_finish(name: &str, sender: Sender<String>) -> Result<(), GitError>
                 branch: branch.clone(),
             },
         ],
-        sender.clone(),
+        &sender,
     )?;
 
     send("Bugfix finished succesfully");

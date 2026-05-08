@@ -77,8 +77,7 @@ struct CliArguments {
 }
 
 fn initialize_and_validate() -> Result<()> {
-    let repo_path = env::current_dir()?;
-    GitWrapper::initialize(repo_path).unwrap_or_else(|e| {
+    GitWrapper::initialize().unwrap_or_else(|e| {
         eprintln!("Error: {}", e);
         exit(ExitCode::NotAGitRepository.code());
     });
