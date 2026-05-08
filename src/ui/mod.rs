@@ -10,17 +10,20 @@ use std::time::Duration;
 use ratatui::{
     Frame,
     crossterm::event::{self, KeyCode},
-    layout::{Alignment, Constraint, Layout, Margin, Rect},
+    layout::{Alignment, Constraint, Layout, Margin, Offset, Rect},
     style::{Color, Style},
     widgets::{Block, Borders, Paragraph},
 };
 
-use crate::ui::{
-    bugfix::{finish::BugfixFinish, start::BugfixStart},
-    feature::{finish::FeatureFinish, start::FeatureStart},
-    hotfix::{finish::HotfixFinish, start::HotfixStart},
-    main_menu::MainMenu,
-    release::{finish::ReleaseFinish, start::ReleaseStart},
+use crate::{
+    git::GitWrapper,
+    ui::{
+        bugfix::{finish::BugfixFinish, start::BugfixStart},
+        feature::{finish::FeatureFinish, start::FeatureStart},
+        hotfix::{finish::HotfixFinish, start::HotfixStart},
+        main_menu::MainMenu,
+        release::{finish::ReleaseFinish, start::ReleaseStart},
+    },
 };
 
 pub enum AppState {
@@ -130,7 +133,6 @@ fn render(frame: &mut Frame, app: &mut App) {
     ]);
 
     let [_, centered_body, _] = body_area.layout(&horizontal);
-
     let block = Block::default().borders(Borders::ALL);
     frame.render_widget(block, centered_body);
 
@@ -143,5 +145,13 @@ fn render(frame: &mut Frame, app: &mut App) {
         page.render(header_area, inner, footer_area, frame);
     } else {
         app.menu_page.render(header_area, inner, footer_area, frame);
+    }
+
+    {
+        let git = GitWrapper::global().lock().unwrap();
+        let branch: Paragraph<'_> = Paragraph::new(format!("  {} ", git.get_branch().to_string()))
+            .style(Style::default().fg(Color::Gray))
+            .alignment(Alignment::Center);
+        frame.render_widget(branch, footer_area + Offset::new(0, -1));
     }
 }
