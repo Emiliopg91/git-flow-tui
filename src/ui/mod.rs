@@ -146,12 +146,4 @@ fn render(frame: &mut Frame, app: &mut App) {
     } else {
         app.menu_page.render(header_area, inner, footer_area, frame);
     }
-
-    if app.page.is_none() {
-        let git = GitWrapper::global().lock().unwrap();
-        let branch: Paragraph<'_> = Paragraph::new(format!("  {} ", git.get_branch().to_string()))
-            .style(Style::default().fg(Color::Gray))
-            .alignment(Alignment::Center);
-        frame.render_widget(branch, footer_area + Offset::new(0, -1));
-    }
 }
