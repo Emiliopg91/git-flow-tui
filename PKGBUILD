@@ -1,10 +1,11 @@
 pkgname=git-flow-tui
-pkgver=1.1.0
+pkgver=1.1.1
 pkgrel=1
 pkgdesc='Terminal UI for gitflow'
 arch=('x86_64')
 url="https://github.com/Emiliopg91/${pkgname}"
 license=('GPL-2')
+provides=('gitflow')
 depends=(
   'glibc'
   'libgcc'
@@ -26,4 +27,5 @@ build() {
 
 package() {
   install -Dm755 "$srcdir/${pkgname}/target/release/${pkgname}" "$pkgdir/usr/bin/${pkgname}"
+  ln -s "${pkgname}" "$pkgdir/usr/bin/git-flow"
 }

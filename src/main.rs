@@ -1,6 +1,7 @@
 use std::{
     collections::HashMap,
     env,
+    path::Path,
     process::exit,
     sync::mpsc::{self, Sender},
     thread,
@@ -74,7 +75,19 @@ fn initialize_and_validate() -> Result<()> {
 
 fn main() -> Result<()> {
     let args = env::args().collect::<Vec<String>>();
-    if args.len() > 1 {
+    let exe_name = Path::new(&args[0])
+        .file_name()
+        .and_then(|s| s.to_str())
+        .unwrap_or("");
+
+    let is_git_flow = exe_name.ends_with("git-flow-tui");
+
+    if is_git_flow {
+        initialize_and_validate()?;
+        WHITEBOARD.get_or_init(|| HashMap::new().into());
+
+        main_loop()
+    } else {
         let cli = CliArguments::parse();
         initialize_and_validate()?;
 
@@ -109,10 +122,5 @@ fn main() -> Result<()> {
         }
 
         Ok(())
-    } else {
-        initialize_and_validate()?;
-        WHITEBOARD.get_or_init(|| HashMap::new().into());
-
-        main_loop()
     }
 }
