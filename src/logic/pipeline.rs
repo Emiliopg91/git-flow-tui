@@ -72,8 +72,8 @@ impl LogicPipeline {
         let t0 = Instant::now();
 
         let _ = Self::send(sender, "  Starting pipeline");
+        let mut git = GitWrapper::global().lock().unwrap();
         for step in steps {
-            let mut git = GitWrapper::global().lock().unwrap();
             match Self::execute_step(step, &mut git, sender) {
                 Ok(_) => continue,
                 Err(e) => {
