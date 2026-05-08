@@ -1,0 +1,72 @@
+name: Rust
+
+on:
+  push:
+    tags:
+      - "v*"
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Generate release artifacts
+        run: |
+          make release
+
+      - name: Extract version
+        id: version
+        run: |
+          VERSION=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -n1)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Setup SSH for AUR
+        env:
+          AUR_SSH_PRIVATE_KEY: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+
+          echo "$AUR_SSH_PRIVATE_KEY" > ~/.ssh/aur
+          chmod 600 ~/.ssh/aur
+
+          cat >> ~/.ssh/config <<EOF
+          Host aur.archlinux.org
+            IdentityFile ~/.ssh/aur
+            User aur
+            StrictHostKeyChecking no
+          EOF
+
+      - name: Publish package to AUR
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          git clone ssh://aur@aur.archlinux.org/git-flow-tui.git aur_git_repo
+
+          cd aur_git_repo
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          cp ../dist/PKGBUILD .
+          cp ../dist/.SRCINFO .
+
+          git add PKGBUILD .SRCINFO
+
+          if ! git diff --cached --quiet; then
+            git commit -m "Release ${VERSION}-1"
+            git push
+          else
+            echo "No changes to publish"
+          fi

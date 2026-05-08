@@ -1,0 +1,66 @@
+import os
+import shutil
+import subprocess
+
+PROJ_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+CARGO_TOML_PATH = os.path.join(PROJ_DIR, "Cargo.toml")
+PKGBUILD_PATH = os.path.join(PROJ_DIR, "resources", "PKGBUILD")
+DIST_DIR = os.path.join(PROJ_DIR, "dist")
+PKGBUILD_DIST_PATH = os.path.join(DIST_DIR, "PKGBUILD")
+
+
+def generate_srcinfo():
+    print("Generating .SRCINFO...")
+    os.chmod(DIST_DIR, 0o777)
+    subprocess.run(
+        [
+            "docker",
+            "run",
+            "--rm",
+            "-u",
+            f"{os.getuid()}:{os.getgid()}",
+            "-v",
+            f"{DIST_DIR}:/pkg",
+            "epulidogil/rog-perf-tuner-srcinfo:latest",
+        ],
+        check=True,
+    )
+
+
+def generate_pkgbuild():
+    print("Generating PKGBUILD...")
+
+    shutil.copy2(PKGBUILD_PATH, PKGBUILD_DIST_PATH)
+
+    with open(CARGO_TOML_PATH, "r", encoding="utf-8") as f:
+        toml = f.read()
+
+    toml = toml.splitlines()
+    version = ""
+    for line in toml:
+        if line.startswith("version"):
+            version = line.split(" = ")[1].replace('"', "")
+            break
+
+    with open(PKGBUILD_DIST_PATH, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    content = content.replace("pkgver=", f"pkgver={version}")
+
+    with open(PKGBUILD_DIST_PATH, "w", encoding="utf-8") as f:
+        f.write(content)
+
+
+def create_dist_dir():
+    if os.path.exists(DIST_DIR):
+        print("Cleaning old dist folder...")
+        shutil.rmtree(DIST_DIR)
+    print("Creating dist folder...")
+    os.makedirs(DIST_DIR)
+
+
+if __name__ == "__main__":
+    create_dist_dir()
+    generate_pkgbuild()
+    generate_srcinfo()
+    print("Release finished")
