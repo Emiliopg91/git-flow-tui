@@ -15,7 +15,7 @@ makedepends=(
   'rust'
 )
 source=(
-  "git+$url.git#tag=$pkgver-$pkgrel"
+  "git+$url.git#tag=$pkgver"
 )
 sha256sums=(
   'SKIP'
