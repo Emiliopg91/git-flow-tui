@@ -27,6 +27,12 @@ build() {
 }
 
 package() {
+  #TUI
   install -Dm755 "$srcdir/${pkgname}/target/release/${pkgname}" "$pkgdir/usr/bin/${pkgname}"
+  
+  #CLI
   ln -s "${pkgname}" "$pkgdir/usr/bin/git-flow"
+  ./target/release/git-flow completion > git-flow.bash
+  install -Dm644 git-flow.bash \
+      "$pkgdir/usr/share/bash-completion/completions/git-flow"
 }

@@ -1,15 +1,17 @@
 use std::{
     collections::HashMap,
     env,
+    io::stdout,
     path::Path,
     process::exit,
     sync::mpsc::{self, Sender},
     thread,
 };
 
+use clap_complete::{aot::Bash, generate};
 use color_eyre::eyre::Result;
 
-use clap::{Parser, ValueEnum};
+use clap::{CommandFactory, Parser, Subcommand, ValueEnum};
 
 use crate::{
     git::{GitWrapper, errors::GitError},
@@ -28,29 +30,50 @@ mod logic;
 mod others;
 mod ui;
 
-#[derive(Clone, Debug, ValueEnum)]
-enum BranchKind {
-    Feature,
-    Release,
-    Bugfix,
-    Hotfix,
-}
-
-#[derive(Clone, Debug, ValueEnum)]
+#[derive(Clone, Debug, ValueEnum, PartialEq)]
 enum Action {
     Start,
     Finish,
 }
 
+#[derive(Debug, Subcommand)]
+enum Commands {
+    Feature {
+        name: String,
+
+        #[arg(value_enum)]
+        action: Action,
+    },
+
+    Release {
+        name: String,
+
+        #[arg(value_enum)]
+        action: Action,
+    },
+
+    Hotfix {
+        name: String,
+
+        #[arg(value_enum)]
+        action: Action,
+    },
+
+    Bugfix {
+        name: String,
+
+        #[arg(value_enum)]
+        action: Action,
+    },
+
+    #[command(hide = true)]
+    Completion,
+}
+
 #[derive(Parser, Debug)]
 struct CliArguments {
-    #[arg(value_enum)]
-    pub kind: BranchKind,
-
-    pub name: String,
-
-    #[arg(value_enum)]
-    pub action: Action,
+    #[command(subcommand)]
+    command: Commands,
 }
 
 fn initialize_and_validate() -> Result<()> {
@@ -88,39 +111,108 @@ fn main() -> Result<()> {
 
         main_loop()
     } else {
-        let cli = CliArguments::parse();
-        initialize_and_validate()?;
+        let cli: CliArguments = CliArguments::parse();
 
-        type StepFn = fn(&str, Sender<String>) -> Result<(), GitError>;
-        let function: Option<StepFn> = match (cli.kind, cli.action) {
-            (BranchKind::Feature, Action::Start) => Some(feature_start),
-            (BranchKind::Feature, Action::Finish) => Some(feature_finish),
-            (BranchKind::Release, Action::Start) => Some(release_start),
-            (BranchKind::Release, Action::Finish) => Some(release_finish),
-            (BranchKind::Hotfix, Action::Start) => Some(hotfix_start),
-            (BranchKind::Hotfix, Action::Finish) => Some(hotfix_finish),
-            (BranchKind::Bugfix, Action::Start) => Some(bugfix_start),
-            (BranchKind::Bugfix, Action::Finish) => Some(bugfix_finish),
-        };
+        match cli.command {
+            Commands::Completion => {
+                let mut cmd = CliArguments::command();
+                generate(Bash, &mut cmd, "git-flow", &mut stdout());
+            }
+            command => {
+                type StepFn = fn(&str, Sender<String>) -> Result<(), GitError>;
 
-        if let Some(fnc) = function {
-            let (tx, rx) = mpsc::channel::<String>();
-            let worker = thread::spawn(move || {
-                if let Err(e) = fnc(&cli.name, tx.clone()) {
-                    tx.send(format!("{}", e)).unwrap()
-                }
-            });
+                let exec: Option<(String, StepFn)> = match command {
+                    Commands::Feature { name, action } => {
+                        if action == Action::Start {
+                            Some((name, feature_start))
+                        } else {
+                            Some((name, feature_finish))
+                        }
+                    }
+                    Commands::Release { name, action } => {
+                        if action == Action::Start {
+                            Some((name, release_start))
+                        } else {
+                            Some((name, release_finish))
+                        }
+                    }
+                    Commands::Bugfix { name, action } => {
+                        if action == Action::Start {
+                            Some((name, bugfix_start))
+                        } else {
+                            Some((name, bugfix_finish))
+                        }
+                    }
+                    Commands::Hotfix { name, action } => {
+                        if action == Action::Start {
+                            Some((name, hotfix_start))
+                        } else {
+                            Some((name, hotfix_finish))
+                        }
+                    }
+                    Commands::Completion => unreachable!(),
+                };
 
-            loop {
-                while let Ok(msg) = rx.try_recv() {
-                    println!("{}", msg);
-                }
-                if worker.is_finished() {
-                    break;
+                if let Some(fnc) = exec {
+                    initialize_and_validate()?;
+
+                    let (tx, rx) = mpsc::channel::<String>();
+                    let worker = thread::spawn(move || {
+                        if let Err(e) = fnc.1(&fnc.0, tx.clone()) {
+                            tx.send(format!("{}", e)).unwrap()
+                        }
+                    });
+
+                    loop {
+                        while let Ok(msg) = rx.try_recv() {
+                            println!("{}", msg);
+                        }
+                        if worker.is_finished() {
+                            break;
+                        }
+                    }
                 }
             }
         }
 
         Ok(())
+
+        /*
+        match cli.command {
+            Commands::Completion => {}
+            Commands::Branch { kind, name, action } => {
+                type StepFn = fn(&str, Sender<String>) -> Result<(), GitError>;
+                let function: Option<StepFn> = match (kind, action) {
+                    (BranchKind::Feature, Action::Start) => Some(feature_start),
+                    (BranchKind::Feature, Action::Finish) => Some(feature_finish),
+                    (BranchKind::Release, Action::Start) => Some(release_start),
+                    (BranchKind::Release, Action::Finish) => Some(release_finish),
+                    (BranchKind::Hotfix, Action::Start) => Some(hotfix_start),
+                    (BranchKind::Hotfix, Action::Finish) => Some(hotfix_finish),
+                    (BranchKind::Bugfix, Action::Start) => Some(bugfix_start),
+                    (BranchKind::Bugfix, Action::Finish) => Some(bugfix_finish),
+                };
+
+                if let Some(fnc) = function {
+                    initialize_and_validate()?;
+
+                    let (tx, rx) = mpsc::channel::<String>();
+                    let worker = thread::spawn(move || {
+                        if let Err(e) = fnc(&name, tx.clone()) {
+                            tx.send(format!("{}", e)).unwrap()
+                        }
+                    });
+
+                    loop {
+                        while let Ok(msg) = rx.try_recv() {
+                            println!("{}", msg);
+                        }
+                        if worker.is_finished() {
+                            break;
+                        }
+                    }
+                }
+            }
+        } */
     }
 }
