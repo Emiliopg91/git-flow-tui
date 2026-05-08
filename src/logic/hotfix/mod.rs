@@ -8,6 +8,8 @@ use crate::{
 pub fn hotfix_start(name: &str, sender: Sender<String>) -> Result<(), GitError> {
     let branch = format!("hotfix/{}", name);
     let git = GitWrapper::global().lock().unwrap();
+    let main_branch = git.main_branch.clone();
+    drop(git);
 
     let send = |msg: &str| {
         let _ = sender.send(msg.into());
@@ -18,7 +20,7 @@ pub fn hotfix_start(name: &str, sender: Sender<String>) -> Result<(), GitError> 
     LogicPipeline::execute_pipeline(
         &[
             StepKind::Checkout {
-                branch: git.main_branch.clone(),
+                branch: main_branch.clone(),
             },
             StepKind::Pull,
             StepKind::CreateBranch { branch },
@@ -34,6 +36,8 @@ pub fn hotfix_start(name: &str, sender: Sender<String>) -> Result<(), GitError> 
 pub fn hotfix_finish(name: &str, sender: Sender<String>) -> Result<(), GitError> {
     let branch = format!("hotfix/{}", name);
     let git = GitWrapper::global().lock().unwrap();
+    let main_branch = git.main_branch.clone();
+    drop(git);
 
     let send = |msg: &str| {
         let _ = sender.send(msg.into());
@@ -49,7 +53,7 @@ pub fn hotfix_finish(name: &str, sender: Sender<String>) -> Result<(), GitError>
             StepKind::Pull,
             StepKind::Push,
             StepKind::Checkout {
-                branch: git.main_branch.clone(),
+                branch: main_branch.clone(),
             },
             StepKind::Pull,
             StepKind::Merge {
@@ -64,7 +68,7 @@ pub fn hotfix_finish(name: &str, sender: Sender<String>) -> Result<(), GitError>
             },
             StepKind::Pull,
             StepKind::Merge {
-                branch: git.main_branch.clone(),
+                branch: main_branch.clone(),
             },
             StepKind::Push,
             StepKind::DeleteBranch {

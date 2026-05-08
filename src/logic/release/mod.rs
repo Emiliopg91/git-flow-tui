@@ -40,6 +40,8 @@ pub fn release_finish(name: &str, sender: Sender<String>) -> Result<(), GitError
     send(&format!("Finishing release {name}..."));
 
     let git = GitWrapper::global().lock().unwrap();
+    let main_branch = git.main_branch.clone();
+    drop(git);
 
     LogicPipeline::execute_pipeline(
         &[
@@ -49,7 +51,7 @@ pub fn release_finish(name: &str, sender: Sender<String>) -> Result<(), GitError
             StepKind::Pull,
             StepKind::Push,
             StepKind::Checkout {
-                branch: git.main_branch.clone(),
+                branch: main_branch.clone(),
             },
             StepKind::Pull,
             StepKind::Merge {
@@ -64,7 +66,7 @@ pub fn release_finish(name: &str, sender: Sender<String>) -> Result<(), GitError
                 branch: "develop".into(),
             },
             StepKind::Merge {
-                branch: git.main_branch.clone(),
+                branch: main_branch.clone(),
             },
             StepKind::Push,
             StepKind::DeleteBranch {
