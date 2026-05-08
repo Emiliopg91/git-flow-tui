@@ -2,7 +2,7 @@ use std::sync::mpsc::Sender;
 
 use crate::{
     git::{GitWrapper, errors::GitError},
-    logic::pipeline::{LogicPipeline, StepKind},
+    logic::pipeline::{LogicPipeline, Step},
 };
 
 pub fn hotfix_start(name: &str, sender: Sender<String>) -> Result<(), GitError> {
@@ -19,11 +19,11 @@ pub fn hotfix_start(name: &str, sender: Sender<String>) -> Result<(), GitError> 
 
     LogicPipeline::execute_pipeline(
         &[
-            StepKind::Checkout {
+            Step::Checkout {
                 branch: main_branch.clone(),
             },
-            StepKind::Pull,
-            StepKind::CreateBranch { branch },
+            Step::Pull,
+            Step::CreateBranch { branch },
         ],
         &sender,
     )?;
@@ -47,31 +47,31 @@ pub fn hotfix_finish(name: &str, sender: Sender<String>) -> Result<(), GitError>
 
     LogicPipeline::execute_pipeline(
         &[
-            StepKind::Checkout {
+            Step::Checkout {
                 branch: branch.clone(),
             },
-            StepKind::Pull,
-            StepKind::Push,
-            StepKind::Checkout {
+            Step::Pull,
+            Step::Push,
+            Step::Checkout {
                 branch: main_branch.clone(),
             },
-            StepKind::Pull,
-            StepKind::Merge {
+            Step::Pull,
+            Step::Merge {
                 branch: branch.clone(),
             },
-            StepKind::Commit {
+            Step::Commit {
                 message: format!("Merge after {} hotfix merge", name),
             },
-            StepKind::Push,
-            StepKind::Checkout {
+            Step::Push,
+            Step::Checkout {
                 branch: "develop".to_string(),
             },
-            StepKind::Pull,
-            StepKind::Merge {
+            Step::Pull,
+            Step::Merge {
                 branch: main_branch.clone(),
             },
-            StepKind::Push,
-            StepKind::DeleteBranch {
+            Step::Push,
+            Step::DeleteBranch {
                 branch: branch.clone(),
             },
         ],

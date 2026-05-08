@@ -2,7 +2,7 @@ use std::sync::mpsc::Sender;
 
 use crate::{
     git::errors::GitError,
-    logic::pipeline::{LogicPipeline, StepKind},
+    logic::pipeline::{LogicPipeline, Step},
 };
 
 pub fn feature_start(name: &str, sender: Sender<String>) -> Result<(), GitError> {
@@ -16,11 +16,11 @@ pub fn feature_start(name: &str, sender: Sender<String>) -> Result<(), GitError>
 
     LogicPipeline::execute_pipeline(
         &[
-            StepKind::Checkout {
+            Step::Checkout {
                 branch: "develop".to_string(),
             },
-            StepKind::Pull,
-            StepKind::CreateBranch { branch },
+            Step::Pull,
+            Step::CreateBranch { branch },
         ],
         &sender,
     )?;
@@ -41,23 +41,23 @@ pub fn feature_finish(name: &str, sender: Sender<String>) -> Result<(), GitError
 
     LogicPipeline::execute_pipeline(
         &[
-            StepKind::Checkout {
+            Step::Checkout {
                 branch: branch.clone(),
             },
-            StepKind::Pull,
-            StepKind::Push,
-            StepKind::Checkout {
+            Step::Pull,
+            Step::Push,
+            Step::Checkout {
                 branch: "develop".to_string(),
             },
-            StepKind::Pull,
-            StepKind::Merge {
+            Step::Pull,
+            Step::Merge {
                 branch: branch.clone(),
             },
-            StepKind::Commit {
+            Step::Commit {
                 message: format!("Merge after {} feature merge", name),
             },
-            StepKind::Push,
-            StepKind::DeleteBranch {
+            Step::Push,
+            Step::DeleteBranch {
                 branch: branch.clone(),
             },
         ],

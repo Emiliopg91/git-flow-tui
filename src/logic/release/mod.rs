@@ -2,7 +2,7 @@ use std::sync::mpsc::Sender;
 
 use crate::{
     git::{GitWrapper, errors::GitError},
-    logic::pipeline::{LogicPipeline, StepKind},
+    logic::pipeline::{LogicPipeline, Step},
 };
 
 pub fn release_start(name: &str, sender: Sender<String>) -> Result<(), GitError> {
@@ -16,11 +16,11 @@ pub fn release_start(name: &str, sender: Sender<String>) -> Result<(), GitError>
 
     LogicPipeline::execute_pipeline(
         &[
-            StepKind::Checkout {
+            Step::Checkout {
                 branch: "develop".into(),
             },
-            StepKind::Pull,
-            StepKind::CreateBranch { branch },
+            Step::Pull,
+            Step::CreateBranch { branch },
         ],
         &sender,
     )?;
@@ -45,31 +45,31 @@ pub fn release_finish(name: &str, sender: Sender<String>) -> Result<(), GitError
 
     LogicPipeline::execute_pipeline(
         &[
-            StepKind::Checkout {
+            Step::Checkout {
                 branch: branch.clone(),
             },
-            StepKind::Pull,
-            StepKind::Push,
-            StepKind::Checkout {
+            Step::Pull,
+            Step::Push,
+            Step::Checkout {
                 branch: main_branch.clone(),
             },
-            StepKind::Pull,
-            StepKind::Merge {
+            Step::Pull,
+            Step::Merge {
                 branch: branch.clone(),
             },
-            StepKind::Push,
-            StepKind::Tag {
+            Step::Push,
+            Step::Tag {
                 tag: name.to_string(),
             },
-            StepKind::PushTags,
-            StepKind::Checkout {
+            Step::PushTags,
+            Step::Checkout {
                 branch: "develop".into(),
             },
-            StepKind::Merge {
+            Step::Merge {
                 branch: main_branch.clone(),
             },
-            StepKind::Push,
-            StepKind::DeleteBranch {
+            Step::Push,
+            Step::DeleteBranch {
                 branch: branch.clone(),
             },
         ],
