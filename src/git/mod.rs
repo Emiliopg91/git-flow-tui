@@ -50,8 +50,7 @@ impl GitWrapper {
     }
 
     pub fn has_changes(&self) -> Result<bool, GitError> {
-        let args = ["status", "--porcelain"];
-        Ok(!run_shell_command("git", &args, true)
+        Ok(!run_shell_command("git", ["status", "--porcelain"], true)
             .map_err(|e| GitError::CommandFailed("git status --porcelain".to_string(), e))?
             .stdout
             .lines()
@@ -103,7 +102,7 @@ impl GitWrapper {
 
     pub fn push_tags(&self) -> Result<(), GitError> {
         run_shell_command("git", ["push".to_string(), "--tags".to_string()], true)
-            .map_err(|e| GitError::PushTagsFailed(e))?;
+            .map_err(GitError::PushTagsFailed)?;
 
         Ok(())
     }
@@ -133,7 +132,7 @@ impl GitWrapper {
             args.push("--prune".to_string());
         }
 
-        run_shell_command("git", &args, true).map_err(|e| GitError::FetchFailed(e))?;
+        run_shell_command("git", &args, true).map_err(GitError::FetchFailed)?;
 
         Ok(())
     }
@@ -153,8 +152,7 @@ impl GitWrapper {
     }
 
     pub fn get_branches(&self) -> Result<Vec<String>, GitError> {
-        let res = run_shell_command("git", ["branch"], true)
-            .map_err(|e| GitError::ListBranchFailed(e))?;
+        let res = run_shell_command("git", ["branch"], true).map_err(GitError::ListBranchFailed)?;
 
         Ok(res
             .stdout
@@ -164,8 +162,8 @@ impl GitWrapper {
     }
 
     pub fn get_remote_branches(&self) -> Result<Vec<String>, GitError> {
-        let res = run_shell_command("git", ["branch", "-r"], true)
-            .map_err(|e| GitError::ListBranchFailed(e))?;
+        let res =
+            run_shell_command("git", ["branch", "-r"], true).map_err(GitError::ListBranchFailed)?;
 
         Ok(res
             .stdout
