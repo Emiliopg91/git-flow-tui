@@ -4,7 +4,7 @@ use crate::{
     git::GitWrapper,
     logic::{
         errors::PipelineError,
-        pipeline::{LogicPipeline, Precondition, Step},
+        pipeline::{Pipeline, Precondition, Step},
     },
 };
 
@@ -17,15 +17,12 @@ pub fn release_start(name: &str, sender: Sender<String>) -> Result<(), PipelineE
 
     send(&format!("Starting creation of release {name}..."));
 
-    LogicPipeline::execute_pipeline(
-        &[Precondition::RequiresMissingBranch(branch.clone())],
-        &[
-            Step::Checkout("develop".into()),
-            Step::Pull(),
-            Step::CreateBranch(branch.clone()),
-        ],
-        &sender,
-    )?;
+    Pipeline::new(sender.clone())
+        .requires(Precondition::RequiresMissingBranch(branch.clone()))
+        .step(Step::Checkout("develop".into()))
+        .step(Step::Pull())
+        .step(Step::CreateBranch(branch.clone()))
+        .run()?;
 
     send("Release started successfully");
 
@@ -45,25 +42,22 @@ pub fn release_finish(name: &str, sender: Sender<String>) -> Result<(), Pipeline
     let main_branch = git.main_branch.clone();
     drop(git);
 
-    LogicPipeline::execute_pipeline(
-        &[Precondition::RequiresExistingLocalBranch(branch.clone())],
-        &[
-            Step::Checkout(branch.clone()),
-            Step::Pull(),
-            Step::Push(),
-            Step::Checkout(main_branch.clone()),
-            Step::Pull(),
-            Step::Merge(branch.clone()),
-            Step::Tag(name.to_string()),
-            Step::Push(),
-            Step::PushTags(),
-            Step::Checkout("develop".into()),
-            Step::Merge(main_branch.clone()),
-            Step::Push(),
-            Step::DeleteBranch(branch.clone()),
-        ],
-        &sender,
-    )?;
+    Pipeline::new(sender.clone())
+        .requires(Precondition::RequiresExistingLocalBranch(branch.clone()))
+        .step(Step::Checkout(branch.clone()))
+        .step(Step::Pull())
+        .step(Step::Push())
+        .step(Step::Checkout(main_branch.clone()))
+        .step(Step::Pull())
+        .step(Step::Merge(branch.clone()))
+        .step(Step::Tag(name.to_string()))
+        .step(Step::Push())
+        .step(Step::PushTags())
+        .step(Step::Checkout("develop".into()))
+        .step(Step::Merge(main_branch.clone()))
+        .step(Step::Push())
+        .step(Step::DeleteBranch(branch.clone()))
+        .run()?;
 
     send("Release finished successfully");
 

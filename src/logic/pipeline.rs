@@ -19,9 +19,69 @@ pub enum Step {
     Tag(String),
 }
 
-pub struct LogicPipeline {}
+pub struct Pipeline {
+    requires: Vec<Precondition>,
+    sender: Sender<String>,
+    steps: Vec<Step>,
+}
 
-impl LogicPipeline {
+impl Pipeline {
+    pub fn new(sender: Sender<String>) -> Self {
+        Self {
+            requires: Vec::new(),
+            sender,
+            steps: Vec::new(),
+        }
+    }
+
+    pub fn step(&mut self, step: Step) -> &mut Pipeline {
+        self.steps.push(step);
+        self
+    }
+
+    pub fn requires(&mut self, precondition: Precondition) -> &mut Pipeline {
+        self.requires.push(precondition);
+        self
+    }
+
+    pub fn run(&self) -> Result<(), PipelineError> {
+        let t0 = Instant::now();
+
+        Self::send(&self.sender, "  Starting pipeline");
+        let mut git = GitWrapper::global().lock().unwrap();
+        for precondition in &self.requires {
+            match Self::execute_precondition(precondition, &mut git, &self.sender) {
+                Ok(_) => continue,
+                Err(e) => {
+                    return Err(e);
+                }
+            }
+        }
+        for step in &self.steps {
+            match Self::execute_step(step, &mut git, &self.sender)
+                .map_err(|e| PipelineError::ExecutionFailed(Box::new(e)))
+            {
+                Ok(_) => continue,
+                Err(e) => {
+                    return Err(e);
+                }
+            }
+        }
+        Self::send(
+            &self.sender,
+            &format!(
+                "  Pipeline finished after {:.3}",
+                t0.elapsed().as_secs_f64()
+            ),
+        );
+
+        Ok(())
+    }
+
+    fn send(sender: &Sender<String>, msg: &str) {
+        let _ = sender.send(msg.to_string());
+    }
+
     fn execute_precondition(
         precondition: &Precondition,
         git: &mut GitWrapper,
@@ -136,47 +196,5 @@ impl LogicPipeline {
         }
 
         Ok(())
-    }
-
-    pub fn execute_pipeline(
-        preconditions: &[Precondition],
-        steps: &[Step],
-        sender: &Sender<String>,
-    ) -> Result<(), PipelineError> {
-        let t0 = Instant::now();
-
-        Self::send(sender, "  Starting pipeline");
-        let mut git = GitWrapper::global().lock().unwrap();
-        for precondition in preconditions {
-            match Self::execute_precondition(precondition, &mut git, sender) {
-                Ok(_) => continue,
-                Err(e) => {
-                    return Err(e);
-                }
-            }
-        }
-        for step in steps {
-            match Self::execute_step(step, &mut git, sender)
-                .map_err(|e| PipelineError::ExecutionFailed(Box::new(e)))
-            {
-                Ok(_) => continue,
-                Err(e) => {
-                    return Err(e);
-                }
-            }
-        }
-        Self::send(
-            sender,
-            &format!(
-                "  Pipeline finished after {:.3}",
-                t0.elapsed().as_secs_f64()
-            ),
-        );
-
-        Ok(())
-    }
-
-    fn send(sender: &Sender<String>, msg: &str) {
-        let _ = sender.send(msg.to_string());
     }
 }

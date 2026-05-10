@@ -4,7 +4,7 @@ use crate::{
     git::GitWrapper,
     logic::{
         errors::PipelineError,
-        pipeline::{LogicPipeline, Precondition, Step},
+        pipeline::{Pipeline, Precondition, Step},
     },
 };
 
@@ -20,15 +20,11 @@ pub fn hotfix_start(name: &str, sender: Sender<String>) -> Result<(), PipelineEr
 
     send(&format!("Starting creation of hotfix {}...", name));
 
-    LogicPipeline::execute_pipeline(
-        &[Precondition::RequiresMissingBranch(branch.clone())],
-        &[
-            Step::Checkout(main_branch.clone()),
-            Step::Pull(),
-            Step::CreateBranch(branch.clone()),
-        ],
-        &sender,
-    )?;
+    Pipeline::new(sender.clone())
+        .step(Step::Checkout(main_branch.clone()))
+        .step(Step::Pull())
+        .step(Step::CreateBranch(branch.clone()))
+        .run()?;
 
     send("Hotfix started succesfully");
 
@@ -47,25 +43,22 @@ pub fn hotfix_finish(name: &str, sender: Sender<String>) -> Result<(), PipelineE
 
     send(&format!("Finishing hotfix {}...", name));
 
-    LogicPipeline::execute_pipeline(
-        &[Precondition::RequiresExistingLocalBranch(branch.clone())],
-        &[
-            Step::Checkout(branch.clone()),
-            Step::Pull(),
-            Step::Push(),
-            Step::Checkout(main_branch.clone()),
-            Step::Pull(),
-            Step::Merge(branch.clone()),
-            Step::Commit(format!("Merge after {} hotfix merge", name)),
-            Step::Push(),
-            Step::Checkout("develop".to_string()),
-            Step::Pull(),
-            Step::Merge(main_branch.clone()),
-            Step::Push(),
-            Step::DeleteBranch(branch.clone()),
-        ],
-        &sender,
-    )?;
+    Pipeline::new(sender.clone())
+        .requires(Precondition::RequiresExistingLocalBranch(branch.clone()))
+        .step(Step::Checkout(branch.clone()))
+        .step(Step::Pull())
+        .step(Step::Push())
+        .step(Step::Checkout(main_branch.clone()))
+        .step(Step::Pull())
+        .step(Step::Merge(branch.clone()))
+        .step(Step::Commit(format!("Merge after {} hotfix merge", name)))
+        .step(Step::Push())
+        .step(Step::Checkout("develop".to_string()))
+        .step(Step::Pull())
+        .step(Step::Merge(main_branch.clone()))
+        .step(Step::Push())
+        .step(Step::DeleteBranch(branch.clone()))
+        .run()?;
 
     send("Hotfix finished succesfully");
 
