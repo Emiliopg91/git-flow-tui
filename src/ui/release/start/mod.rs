@@ -71,7 +71,7 @@ impl UiIface for ReleaseStart {
 
         drop(messages);
 
-        let layout = Layout::vertical([Constraint::Length(size as u16), Constraint::Min(0)]);
+        let layout = Layout::vertical([Constraint::Min(size as u16), Constraint::Min(0)]);
         let [msg_area, input_area] = body.layout(&layout);
 
         match self.state {
@@ -106,6 +106,20 @@ impl UiIface for ReleaseStart {
     fn tick(&mut self) {
         let mut messages = self.messages.lock().unwrap();
         match self.state {
+            StartProcState::Fetching => {
+                if let Ok(git) = GitWrapper::global().lock() {
+                    match git.fetch(true, true) {
+                        Ok(_) => {
+                            self.state = StartProcState::EnterName;
+                        }
+                        Err(e) => {
+                            messages.push(format!("{}", e));
+                            self.state = StartProcState::Finished;
+                        }
+                    }
+                    return;
+                }
+            }
             StartProcState::Creating => {
                 if let Some(rx) = &self.rx {
                     while let Ok(msg) = rx.try_recv() {
@@ -121,17 +135,6 @@ impl UiIface for ReleaseStart {
                 if finished {
                     self.state = StartProcState::Finished
                 }
-            }
-            StartProcState::Fetching => {
-                if let Ok(git) = GitWrapper::global().lock()
-                    && git.fetch(true, true).is_ok()
-                {
-                    self.state = StartProcState::EnterName;
-                    return;
-                }
-
-                messages.push("Could not fetch from remote".to_string());
-                self.state = StartProcState::Finished;
             }
             _ => (),
         }

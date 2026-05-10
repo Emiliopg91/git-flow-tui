@@ -28,6 +28,7 @@ use crate::{
 mod git;
 mod logic;
 mod others;
+mod shell;
 mod ui;
 
 #[derive(Clone, Debug, ValueEnum, PartialEq)]

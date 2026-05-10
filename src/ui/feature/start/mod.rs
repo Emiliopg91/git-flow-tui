@@ -69,7 +69,7 @@ impl UiIface for FeatureStart {
         let size = messages.len();
         drop(messages);
 
-        let layout = Layout::vertical([Constraint::Length(size as u16), Constraint::Min(0)]);
+        let layout = Layout::vertical([Constraint::Min(size as u16), Constraint::Min(0)]);
         let [msg_area, input_area] = body.layout(&layout);
 
         match self.state {
@@ -106,14 +106,18 @@ impl UiIface for FeatureStart {
         let mut messages = self.messages.lock().unwrap();
         match self.state {
             StartProcState::Fetching => {
-                if let Ok(git) = GitWrapper::global().lock()
-                    && git.fetch(true, true).is_ok()
-                {
-                    self.state = StartProcState::EnterName;
+                if let Ok(git) = GitWrapper::global().lock() {
+                    match git.fetch(true, true) {
+                        Ok(_) => {
+                            self.state = StartProcState::EnterName;
+                        }
+                        Err(e) => {
+                            messages.push(format!("{}", e));
+                            self.state = StartProcState::Finished;
+                        }
+                    }
                     return;
                 }
-                messages.push("Could not fetch from remote".to_string());
-                self.state = StartProcState::Finished;
             }
             StartProcState::Creating => {
                 if let Some(rx) = &self.rx {
