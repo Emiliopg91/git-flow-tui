@@ -26,7 +26,6 @@ impl GitWrapper {
 
         let res = run_shell_command("git", ["symbolic-ref", "refs/remotes/origin/HEAD"], true)
             .unwrap_or(ShellResult {
-                status: 0,
                 stdout: "main".to_string(),
                 stderr: "".to_string(),
             });
@@ -34,7 +33,6 @@ impl GitWrapper {
 
         let res2 = run_shell_command("git", ["rev-parse", "--abbrev-ref", "HEAD"], true).unwrap_or(
             ShellResult {
-                status: 0,
                 stdout: res.stdout,
                 stderr: "".to_string(),
             },

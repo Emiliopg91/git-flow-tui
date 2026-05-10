@@ -68,11 +68,12 @@ impl UiIface for HotfixStart {
             .map(|s| s.as_str())
             .collect::<Vec<_>>()
             .join("\n");
-        let size = messages.len();
-
         drop(messages);
 
-        let layout = Layout::vertical([Constraint::Min(size as u16), Constraint::Min(0)]);
+        let layout = Layout::vertical([
+            Constraint::Length((text.matches("\n").count() + 1) as u16),
+            Constraint::Min(0),
+        ]);
         let [msg_area, input_area] = body.layout(&layout);
 
         match self.state {
