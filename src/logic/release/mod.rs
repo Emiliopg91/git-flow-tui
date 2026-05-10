@@ -1,11 +1,14 @@
 use std::sync::mpsc::Sender;
 
 use crate::{
-    git::{GitWrapper, errors::GitError},
-    logic::pipeline::{LogicPipeline, Step},
+    git::GitWrapper,
+    logic::{
+        errors::PipelineError,
+        pipeline::{LogicPipeline, Precondition, Step},
+    },
 };
 
-pub fn release_start(name: &str, sender: Sender<String>) -> Result<(), GitError> {
+pub fn release_start(name: &str, sender: Sender<String>) -> Result<(), PipelineError> {
     let branch = format!("release/{name}");
 
     let send = |msg: &str| {
@@ -15,12 +18,11 @@ pub fn release_start(name: &str, sender: Sender<String>) -> Result<(), GitError>
     send(&format!("Starting creation of release {name}..."));
 
     LogicPipeline::execute_pipeline(
+        &[Precondition::RequiresMissingBranch(branch.clone())],
         &[
-            Step::Checkout {
-                branch: "develop".into(),
-            },
-            Step::Pull,
-            Step::CreateBranch { branch },
+            Step::Checkout("develop".into()),
+            Step::Pull(),
+            Step::CreateBranch(branch.clone()),
         ],
         &sender,
     )?;
@@ -30,7 +32,7 @@ pub fn release_start(name: &str, sender: Sender<String>) -> Result<(), GitError>
     Ok(())
 }
 
-pub fn release_finish(name: &str, sender: Sender<String>) -> Result<(), GitError> {
+pub fn release_finish(name: &str, sender: Sender<String>) -> Result<(), PipelineError> {
     let branch = format!("release/{name}");
 
     let send = |msg: &str| {
@@ -44,34 +46,21 @@ pub fn release_finish(name: &str, sender: Sender<String>) -> Result<(), GitError
     drop(git);
 
     LogicPipeline::execute_pipeline(
+        &[Precondition::RequiresExistingLocalBranch(branch.clone())],
         &[
-            Step::Checkout {
-                branch: branch.clone(),
-            },
-            Step::Pull,
-            Step::Push,
-            Step::Checkout {
-                branch: main_branch.clone(),
-            },
-            Step::Pull,
-            Step::Merge {
-                branch: branch.clone(),
-            },
-            Step::Push,
-            Step::Tag {
-                tag: name.to_string(),
-            },
-            Step::PushTags,
-            Step::Checkout {
-                branch: "develop".into(),
-            },
-            Step::Merge {
-                branch: main_branch.clone(),
-            },
-            Step::Push,
-            Step::DeleteBranch {
-                branch: branch.clone(),
-            },
+            Step::Checkout(branch.clone()),
+            Step::Pull(),
+            Step::Push(),
+            Step::Checkout(main_branch.clone()),
+            Step::Pull(),
+            Step::Merge(branch.clone()),
+            Step::Tag(name.to_string()),
+            Step::Push(),
+            Step::PushTags(),
+            Step::Checkout("develop".into()),
+            Step::Merge(main_branch.clone()),
+            Step::Push(),
+            Step::DeleteBranch(branch.clone()),
         ],
         &sender,
     )?;

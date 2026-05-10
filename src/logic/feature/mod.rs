@@ -1,11 +1,11 @@
 use std::sync::mpsc::Sender;
 
-use crate::{
-    git::errors::GitError,
-    logic::pipeline::{LogicPipeline, Step},
+use crate::logic::{
+    errors::PipelineError,
+    pipeline::{LogicPipeline, Precondition, Step},
 };
 
-pub fn feature_start(name: &str, sender: Sender<String>) -> Result<(), GitError> {
+pub fn feature_start(name: &str, sender: Sender<String>) -> Result<(), PipelineError> {
     let branch = format!("feature/{}", name);
 
     let send = |msg: &str| {
@@ -15,12 +15,11 @@ pub fn feature_start(name: &str, sender: Sender<String>) -> Result<(), GitError>
     send(&format!("Starting creation of feature {}...", name));
 
     LogicPipeline::execute_pipeline(
+        &[Precondition::RequiresMissingBranch(branch.clone())],
         &[
-            Step::Checkout {
-                branch: "develop".to_string(),
-            },
-            Step::Pull,
-            Step::CreateBranch { branch },
+            Step::Checkout("develop".to_string()),
+            Step::Pull(),
+            Step::CreateBranch(branch),
         ],
         &sender,
     )?;
@@ -30,7 +29,7 @@ pub fn feature_start(name: &str, sender: Sender<String>) -> Result<(), GitError>
     Ok(())
 }
 
-pub fn feature_finish(name: &str, sender: Sender<String>) -> Result<(), GitError> {
+pub fn feature_finish(name: &str, sender: Sender<String>) -> Result<(), PipelineError> {
     let branch = format!("feature/{}", name);
 
     let send = |msg: &str| {
@@ -40,26 +39,17 @@ pub fn feature_finish(name: &str, sender: Sender<String>) -> Result<(), GitError
     send(&format!("Finishing feature {}...", name));
 
     LogicPipeline::execute_pipeline(
+        &[Precondition::RequiresExistingLocalBranch(branch.clone())],
         &[
-            Step::Checkout {
-                branch: branch.clone(),
-            },
-            Step::Pull,
-            Step::Push,
-            Step::Checkout {
-                branch: "develop".to_string(),
-            },
-            Step::Pull,
-            Step::Merge {
-                branch: branch.clone(),
-            },
-            Step::Commit {
-                message: format!("Merge after {} feature merge", name),
-            },
-            Step::Push,
-            Step::DeleteBranch {
-                branch: branch.clone(),
-            },
+            Step::Checkout(branch.clone()),
+            Step::Pull(),
+            Step::Push(),
+            Step::Checkout("develop".to_string()),
+            Step::Pull(),
+            Step::Merge(branch.clone()),
+            Step::Commit(format!("Merge after {} feature merge", name)),
+            Step::Push(),
+            Step::DeleteBranch(branch.clone()),
         ],
         &sender,
     )?;

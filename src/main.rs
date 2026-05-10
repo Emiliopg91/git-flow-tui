@@ -14,9 +14,10 @@ use color_eyre::eyre::Result;
 use clap::{CommandFactory, Parser, Subcommand, ValueEnum};
 
 use crate::{
-    git::{GitWrapper, errors::GitError},
+    git::GitWrapper,
     logic::{
         bugfix::{bugfix_finish, bugfix_start},
+        errors::PipelineError,
         feature::{feature_finish, feature_start},
         hotfix::{hotfix_finish, hotfix_start},
         release::{release_finish, release_start},
@@ -119,7 +120,7 @@ fn main() -> Result<()> {
                 generate(Bash, &mut cmd, "git-flow", &mut stdout());
             }
             command => {
-                type StepFn = fn(&str, Sender<String>) -> Result<(), GitError>;
+                type StepFn = fn(&str, Sender<String>) -> Result<(), PipelineError>;
 
                 let exec: Option<(String, StepFn)> = match command {
                     Commands::Feature { name, action } => {
