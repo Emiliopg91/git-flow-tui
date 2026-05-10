@@ -29,7 +29,10 @@ impl LogicPipeline {
     ) -> Result<(), PipelineError> {
         match precondition {
             Precondition::RequiresMissingBranch(branch) => {
-                Self::send(sender, &format!("    Checking branch {}", branch));
+                Self::send(
+                    sender,
+                    &format!("    Checking if branch is missing {}", branch),
+                );
                 let local = git.get_branches().map_err(|e| {
                     PipelineError::PreconditionFailed(
                         "Could not get local branches".to_string(),
@@ -53,6 +56,7 @@ impl LogicPipeline {
                 Ok(())
             }
             Precondition::RequiresExistingLocalBranch(branch) => {
+                Self::send(sender, &format!("    Checking branch {} exists", branch));
                 let local = git.get_branches().map_err(|e| {
                     PipelineError::PreconditionFailed(
                         "Could not get local branches".to_string(),
