@@ -67,9 +67,6 @@ enum Commands {
         #[arg(value_enum)]
         action: Action,
     },
-
-    #[command(hide = true)]
-    Completion,
 }
 
 #[derive(Parser, Debug)]
@@ -113,71 +110,70 @@ fn main() -> Result<()> {
 
         main_loop()
     } else {
-        let cli: CliArguments = CliArguments::parse();
+        if env::var("GFT_GEN_COMPLETION").is_ok() {
+            let mut cmd = CliArguments::command();
+            generate(Bash, &mut cmd, "git-flow", &mut stdout());
+        } else {
+            let cli: CliArguments = CliArguments::parse();
 
-        match cli.command {
-            Commands::Completion => {
-                let mut cmd = CliArguments::command();
-                generate(Bash, &mut cmd, "git-flow", &mut stdout());
-            }
-            command => {
-                type StepFn = fn(&str, Sender<String>) -> Result<(), PipelineError>;
+            match cli.command {
+                command => {
+                    type StepFn = fn(&str, Sender<String>) -> Result<(), PipelineError>;
 
-                let exec: Option<(String, StepFn)> = match command {
-                    Commands::Feature { name, action } => {
-                        if action == Action::Start {
-                            Some((name, feature_start))
-                        } else {
-                            Some((name, feature_finish))
+                    let exec: Option<(String, StepFn)> = match command {
+                        Commands::Feature { name, action } => {
+                            if action == Action::Start {
+                                Some((name, feature_start))
+                            } else {
+                                Some((name, feature_finish))
+                            }
                         }
-                    }
-                    Commands::Release { name, action } => {
-                        if action == Action::Start {
-                            Some((name, release_start))
-                        } else {
-                            Some((name, release_finish))
+                        Commands::Release { name, action } => {
+                            if action == Action::Start {
+                                Some((name, release_start))
+                            } else {
+                                Some((name, release_finish))
+                            }
                         }
-                    }
-                    Commands::Bugfix { name, action } => {
-                        if action == Action::Start {
-                            Some((name, bugfix_start))
-                        } else {
-                            Some((name, bugfix_finish))
+                        Commands::Bugfix { name, action } => {
+                            if action == Action::Start {
+                                Some((name, bugfix_start))
+                            } else {
+                                Some((name, bugfix_finish))
+                            }
                         }
-                    }
-                    Commands::Hotfix { name, action } => {
-                        if action == Action::Start {
-                            Some((name, hotfix_start))
-                        } else {
-                            Some((name, hotfix_finish))
+                        Commands::Hotfix { name, action } => {
+                            if action == Action::Start {
+                                Some((name, hotfix_start))
+                            } else {
+                                Some((name, hotfix_finish))
+                            }
                         }
-                    }
-                    Commands::Completion => unreachable!(),
-                };
+                    };
 
-                if let Some(fnc) = exec {
-                    initialize_and_validate()?;
+                    if let Some(fnc) = exec {
+                        initialize_and_validate()?;
 
-                    let (tx, rx) = mpsc::channel::<String>();
-                    let worker = thread::spawn(move || {
-                        if let Err(e) = fnc.1(&fnc.0, tx.clone()) {
-                            tx.send(format!("{}", e)).unwrap();
-                            exit(1);
-                        }
-                    });
+                        let (tx, rx) = mpsc::channel::<String>();
+                        let worker = thread::spawn(move || {
+                            if let Err(e) = fnc.1(&fnc.0, tx.clone()) {
+                                tx.send(format!("{}", e)).unwrap();
+                                exit(1);
+                            }
+                        });
 
-                    loop {
-                        while let Ok(msg) = rx.try_recv() {
-                            println!("{}", msg);
-                        }
-                        if worker.is_finished() {
-                            break;
+                        loop {
+                            while let Ok(msg) = rx.try_recv() {
+                                println!("{}", msg);
+                            }
+                            if worker.is_finished() {
+                                break;
+                            }
                         }
                     }
                 }
             }
         }
-
         Ok(())
 
         /*

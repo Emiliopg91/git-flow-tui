@@ -5,8 +5,10 @@ import subprocess
 PROJ_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 CARGO_TOML_PATH = os.path.join(PROJ_DIR, "Cargo.toml")
 PKGBUILD_PATH = os.path.join(PROJ_DIR, "resources", "PKGBUILD")
+INSTALL_PATH = os.path.join(PROJ_DIR, "resources", "git-flow-tui.sh")
 DIST_DIR = os.path.join(PROJ_DIR, "dist")
 PKGBUILD_DIST_PATH = os.path.join(DIST_DIR, "PKGBUILD")
+INSTALL_DIST_PATH = os.path.join(DIST_DIR, "git-flow-tui.install")
 
 
 def generate_srcinfo():
@@ -51,6 +53,10 @@ def generate_pkgbuild():
         f.write(content)
 
 
+def copy_install():
+    shutil.copy2(INSTALL_PATH, INSTALL_DIST_PATH)
+
+
 def create_dist_dir():
     if os.path.exists(DIST_DIR):
         print("Cleaning old dist folder...")
@@ -62,5 +68,6 @@ def create_dist_dir():
 if __name__ == "__main__":
     create_dist_dir()
     generate_pkgbuild()
+    copy_install()
     generate_srcinfo()
     print("Release finished")
