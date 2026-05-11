@@ -10,4 +10,4 @@ release: clean
 	@python resources/scripts/release.py
 
 test:
-	@cargo test -- --no-capture --test-threads=1
+	@RUST_BACKTRACE=1 cargo test -- --no-capture --test-threads=1

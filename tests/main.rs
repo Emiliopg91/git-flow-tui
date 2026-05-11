@@ -105,7 +105,7 @@ fn run_cmd(args: &[&str]) -> Result<Output, Error> {
 }
 
 #[test]
-fn test_features() {
+fn test_01_features() {
     initialize();
 
     let res = run_cmd(&["feature", "test-features", "start"]).unwrap();
@@ -149,7 +149,7 @@ git commit -m "Feature adds file"
 }
 
 #[test]
-fn test_bugfix() {
+fn test_02_bugfix() {
     initialize();
 
     let res = run_cmd(&["bugfix", "test-bugfix", "start"]).unwrap();
@@ -193,7 +193,7 @@ git commit -m "Bugfix adds file"
 }
 
 #[test]
-fn test_hotfix() {
+fn test_03_hotfix() {
     initialize();
 
     let res = run_cmd(&["hotfix", "test-hotfix", "start"]).unwrap();
@@ -237,7 +237,7 @@ git commit -m "Hotfix adds file"
 }
 
 #[test]
-fn test_release() {
+fn test_04_release() {
     initialize();
 
     let res = run_cmd(&["release", "test-release", "start"]).unwrap();
