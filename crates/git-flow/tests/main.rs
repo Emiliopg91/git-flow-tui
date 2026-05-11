@@ -29,15 +29,13 @@ static EXEC_PATH: OnceLock<String> = OnceLock::new();
 fn initialize() {
     EXEC_PATH.get_or_init(|| {
         let gft = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("..")
+            .join("..")
             .join("target")
             .join("debug")
             .join("git-flow-tui");
 
         let gf = gft.parent().unwrap().join("git-flow");
-        if !fs::exists(&gf).unwrap() {
-            println!("Creating CLI executable in {:?}", gf.display().to_string());
-            symlink(&gft, &gf).unwrap();
-        }
 
         gf.display().to_string()
     });

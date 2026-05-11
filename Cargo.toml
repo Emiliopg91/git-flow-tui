@@ -1,13 +1,8 @@
-[package]
-name = "git-flow-tui"
-version = "1.2.11"
-edition = "2024"
+[workspace]
+resolver = "3"
 
-[dependencies]
-clap = { version = "4.6.1", features = ["derive"] }
-clap_complete = "4.6.4"
-color-eyre = "0.6.5"
-ratatui = "0.30.0"
+members = ["crates/git-flow", "crates/git-flow-tui-core", "crates/git-flow-tui"]
+
 
 [profile.release]
 lto = "fat"

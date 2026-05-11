@@ -1,9 +1,9 @@
-/target
-/Cargo.lock
 /*.pkg.tar.zst
-/git-flow-tui
-/src/git-flow-tui
+/src
 /pkg
 /aur
 /dist
-/tests/repo
+
+**/target
+**/Cargo.lock
+**/tests/repo

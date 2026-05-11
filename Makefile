@@ -1,10 +1,9 @@
-
 run:
 	@cargo run
 	
 clean:
 	@cargo clean
-	@rm -Rf *.pkg.tar.zst git-flow-tui pkg dist tests/repo
+	@rm -Rf *.pkg.tar.zst git-flow-tui pkg dist tests/repo Cargo.lock
 
 release: clean
 	@python resources/scripts/release.py
