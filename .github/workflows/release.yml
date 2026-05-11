@@ -73,7 +73,7 @@ jobs:
 
           cp ../dist/PKGBUILD .
           cp ../dist/.SRCINFO .
-          cp ../dist/git-flow-tui.install git-flow-tui.install
+          cp ../dist/git-flow-tui.install .
 
           git add PKGBUILD .SRCINFO
 
