@@ -1,6 +1,7 @@
+version = "1.3.0"
+
 [workspace]
 resolver = "3"
-
 members = ["crates/git-flow", "crates/git-flow-tui-core", "crates/git-flow-tui"]
 
 

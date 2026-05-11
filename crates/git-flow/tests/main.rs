@@ -1,7 +1,6 @@
 use std::{
     fs,
     io::Error,
-    os::unix::fs::symlink,
     path::{Path, PathBuf},
     process::{Command, Output},
     sync::OnceLock,

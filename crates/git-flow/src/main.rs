@@ -91,62 +91,61 @@ fn main() -> Result<(), Box<dyn Error>> {
     } else {
         let cli: CliArguments = CliArguments::parse();
 
-        match cli.command {
-            command => {
-                type StepFn = fn(&str, Sender<String>) -> Result<(), PipelineError>;
+        let command = cli.command;
+        {
+            type StepFn = fn(&str, Sender<String>) -> Result<(), PipelineError>;
 
-                let exec: Option<(String, StepFn)> = match command {
-                    Commands::Feature { name, action } => Some((
-                        name,
-                        match action {
-                            Action::Start => feature_start,
-                            Action::Finish => feature_finish,
-                        },
-                    )),
+            let exec: Option<(String, StepFn)> = match command {
+                Commands::Feature { name, action } => Some((
+                    name,
+                    match action {
+                        Action::Start => feature_start,
+                        Action::Finish => feature_finish,
+                    },
+                )),
 
-                    Commands::Release { name, action } => Some((
-                        name,
-                        match action {
-                            Action::Start => release_start,
-                            Action::Finish => release_finish,
-                        },
-                    )),
+                Commands::Release { name, action } => Some((
+                    name,
+                    match action {
+                        Action::Start => release_start,
+                        Action::Finish => release_finish,
+                    },
+                )),
 
-                    Commands::Bugfix { name, action } => Some((
-                        name,
-                        match action {
-                            Action::Start => bugfix_start,
-                            Action::Finish => bugfix_finish,
-                        },
-                    )),
+                Commands::Bugfix { name, action } => Some((
+                    name,
+                    match action {
+                        Action::Start => bugfix_start,
+                        Action::Finish => bugfix_finish,
+                    },
+                )),
 
-                    Commands::Hotfix { name, action } => Some((
-                        name,
-                        match action {
-                            Action::Start => hotfix_start,
-                            Action::Finish => hotfix_finish,
-                        },
-                    )),
-                };
+                Commands::Hotfix { name, action } => Some((
+                    name,
+                    match action {
+                        Action::Start => hotfix_start,
+                        Action::Finish => hotfix_finish,
+                    },
+                )),
+            };
 
-                if let Some(fnc) = exec {
-                    initialize_and_validate()?;
+            if let Some(fnc) = exec {
+                initialize_and_validate()?;
 
-                    let (tx, rx) = mpsc::channel::<String>();
-                    let worker = thread::spawn(move || {
-                        if let Err(e) = fnc.1(&fnc.0, tx.clone()) {
-                            tx.send(format!("{}", e)).unwrap();
-                            exit(1);
-                        }
-                    });
+                let (tx, rx) = mpsc::channel::<String>();
+                let worker = thread::spawn(move || {
+                    if let Err(e) = fnc.1(&fnc.0, tx.clone()) {
+                        tx.send(format!("{}", e)).unwrap();
+                        exit(1);
+                    }
+                });
 
-                    loop {
-                        while let Ok(msg) = rx.try_recv() {
-                            println!("{}", msg);
-                        }
-                        if worker.is_finished() {
-                            break;
-                        }
+                loop {
+                    while let Ok(msg) = rx.try_recv() {
+                        println!("{}", msg);
+                    }
+                    if worker.is_finished() {
+                        break;
                     }
                 }
             }

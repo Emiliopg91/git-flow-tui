@@ -3,10 +3,13 @@ run:
 	
 clean:
 	@cargo clean
-	@rm -Rf *.pkg.tar.zst git-flow-tui pkg dist tests/repo Cargo.lock
+	@rm -Rf *.pkg.tar.zst git-flow-tui pkg src dist crates/git-flow/tests/repo Cargo.lock
 
 release: clean
 	@python resources/scripts/release.py
+
+version:
+	@python resources/scripts/set_version.py
 
 test:
 	@RUST_BACKTRACE=1 cargo test -- --no-capture --test-threads=1
