@@ -121,34 +121,37 @@ fn main() -> Result<()> {
                     type StepFn = fn(&str, Sender<String>) -> Result<(), PipelineError>;
 
                     let exec: Option<(String, StepFn)> = match command {
-                        Commands::Feature { name, action } => {
-                            if action == Action::Start {
-                                Some((name, feature_start))
-                            } else {
-                                Some((name, feature_finish))
-                            }
-                        }
-                        Commands::Release { name, action } => {
-                            if action == Action::Start {
-                                Some((name, release_start))
-                            } else {
-                                Some((name, release_finish))
-                            }
-                        }
-                        Commands::Bugfix { name, action } => {
-                            if action == Action::Start {
-                                Some((name, bugfix_start))
-                            } else {
-                                Some((name, bugfix_finish))
-                            }
-                        }
-                        Commands::Hotfix { name, action } => {
-                            if action == Action::Start {
-                                Some((name, hotfix_start))
-                            } else {
-                                Some((name, hotfix_finish))
-                            }
-                        }
+                        Commands::Feature { name, action } => Some((
+                            name,
+                            match action {
+                                Action::Start => feature_start,
+                                Action::Finish => feature_finish,
+                            },
+                        )),
+
+                        Commands::Release { name, action } => Some((
+                            name,
+                            match action {
+                                Action::Start => release_start,
+                                Action::Finish => release_finish,
+                            },
+                        )),
+
+                        Commands::Bugfix { name, action } => Some((
+                            name,
+                            match action {
+                                Action::Start => bugfix_start,
+                                Action::Finish => bugfix_finish,
+                            },
+                        )),
+
+                        Commands::Hotfix { name, action } => Some((
+                            name,
+                            match action {
+                                Action::Start => hotfix_start,
+                                Action::Finish => hotfix_finish,
+                            },
+                        )),
                     };
 
                     if let Some(fnc) = exec {

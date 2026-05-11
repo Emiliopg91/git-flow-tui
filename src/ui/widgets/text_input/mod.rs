@@ -33,7 +33,7 @@ impl StatefulWidget for TextInput {
         buf: &mut ratatui::prelude::Buffer,
         state: &mut Self::State,
     ) {
-        let txt = format!("{}: {}_", self.title, state.value);
+        let txt = format!("{}: {}█", self.title, state.value);
         let par = Paragraph::new(txt);
 
         par.render(area, buf);
