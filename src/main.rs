@@ -95,7 +95,6 @@ fn initialize_and_validate() -> Result<()> {
 }
 
 fn main() -> Result<()> {
-    println!("{}", std::env::current_dir().unwrap().display());
     let args = env::args().collect::<Vec<String>>();
     let exe_name = Path::new(&args[0])
         .file_name()
