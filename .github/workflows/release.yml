@@ -75,7 +75,7 @@ jobs:
           cp ../dist/.SRCINFO .
           cp ../dist/git-flow-tui.install .
 
-          git add PKGBUILD .SRCINFO
+          git add PKGBUILD .SRCINFO git-flow-tui.install
 
           if ! git diff --cached --quiet; then
             git commit -m "Release ${VERSION}-1"
