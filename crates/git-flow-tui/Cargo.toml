@@ -1,0 +1,10 @@
+[package]
+name = "git-flow-tui"
+version = "1.3.0"
+edition = "2024"
+default-run = "git-flow-tui"
+
+[dependencies]
+color-eyre = "0.6.5"
+ratatui = "0.30.0"
+git-flow-tui-core = { path = "../git-flow-tui-core" }
