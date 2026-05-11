@@ -62,6 +62,10 @@ git init --bare "{remote}"
 git clone "{remote}" "{local}"
 
 cd "{local}"
+
+git config user.email "test@example.com"
+git config user.name "test"
+
 touch obj-main
 git add .
 git commit -m "First commit"
