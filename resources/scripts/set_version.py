@@ -3,11 +3,9 @@ import re
 
 PROJ_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 CARGO_TOML_PATH = os.path.join(PROJ_DIR, "Cargo.toml")
-CORE_CARGO_TOML_PATH = os.path.join(
-    PROJ_DIR, "crates", "git-flow-tui-core", "Cargo.toml"
-)
-TUI_CARGO_TOML_PATH = os.path.join(PROJ_DIR, "crates", "git-flow-tui", "Cargo.toml")
-CLI_CARGO_TOML_PATH = os.path.join(PROJ_DIR, "crates", "git-flow", "Cargo.toml")
+CORE_CARGO_TOML_PATH = os.path.join(PROJ_DIR, "git-flow-tui-core", "Cargo.toml")
+TUI_CARGO_TOML_PATH = os.path.join(PROJ_DIR, "git-flow-tui", "Cargo.toml")
+CLI_CARGO_TOML_PATH = os.path.join(PROJ_DIR, "git-flow", "Cargo.toml")
 
 if __name__ == "__main__":
     while True:
