@@ -39,8 +39,7 @@ impl FeatureFinish {
             .unwrap()
             .lock()
             .unwrap()
-            .get("branch")
-            .cloned()
+            .remove("branch")
             .unwrap();
         Self {
             name: branch,

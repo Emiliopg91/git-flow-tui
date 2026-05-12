@@ -11,7 +11,9 @@ use crate::ui::{
     },
 };
 
-use git_flow_tui_core::{git::GitWrapper, logic::bugfix::bugfix_start};
+use git_flow_tui_core::{
+    git::GitWrapper, logic::bugfix::bugfix_start, others::whiteboard::WHITEBOARD,
+};
 use ratatui::{
     crossterm::event::KeyCode,
     layout::{Constraint, Layout},
@@ -133,7 +135,13 @@ impl UiIface for BugfixStart {
                     .map(|t| t.is_finished())
                     .unwrap_or(false);
                 if finished {
-                    self.state = StartProcState::Finished
+                    WHITEBOARD
+                        .get()
+                        .unwrap()
+                        .lock()
+                        .unwrap()
+                        .insert("branch".to_string(), self.name.value.clone());
+                    self.state = StartProcState::Finished;
                 }
             }
             _ => {}

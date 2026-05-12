@@ -27,6 +27,14 @@ impl HotfixList {
 impl UiIface for HotfixList {
     fn render(&mut self, _header: Rect, body: Rect, _footer: Rect, frame: &mut Frame) {
         self.list = Some(GitWrapper::global().lock().unwrap().get_hotfixes().unwrap());
+        if let Some(branch) = WHITEBOARD.get().unwrap().lock().unwrap().remove("branch")
+            && let Some(pos) = self
+                .list
+                .as_ref()
+                .and_then(|list| list.iter().position(|x| x == &branch))
+        {
+            self.state = ListState::default().with_selected(Some(pos));
+        }
 
         let list = List::new(self.list.clone().unwrap())
             .style(Color::White)
