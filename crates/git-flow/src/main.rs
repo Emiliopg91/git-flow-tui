@@ -11,7 +11,7 @@ use clap_complete::{aot::Bash, generate};
 
 use clap::{CommandFactory, Parser, Subcommand, ValueEnum};
 use git_flow_tui_core::{
-    git::GitWrapper,
+    initialize_and_validate,
     logic::{
         bugfix::{bugfix_finish, bugfix_start},
         errors::PipelineError,
@@ -19,7 +19,6 @@ use git_flow_tui_core::{
         hotfix::{hotfix_finish, hotfix_start},
         release::{release_finish, release_start},
     },
-    others::exit_code::ExitCode,
 };
 
 #[derive(Clone, Debug, ValueEnum, PartialEq)]
@@ -63,25 +62,6 @@ enum Commands {
 struct CliArguments {
     #[command(subcommand)]
     command: Commands,
-}
-
-fn initialize_and_validate() -> Result<(), Box<dyn Error>> {
-    GitWrapper::initialize().unwrap_or_else(|e| {
-        eprintln!("Error: {}", e);
-        exit(ExitCode::NotAGitRepository.code());
-    });
-
-    let git = GitWrapper::global().lock().unwrap();
-    let has_changes = git.has_changes().unwrap();
-    drop(git);
-
-    if has_changes {
-        eprintln!("Found uncommited changes on repository:");
-        eprintln!("Fix it and try again.");
-        exit(ExitCode::UncommitedChanges.code());
-    }
-
-    Ok(())
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
