@@ -2,7 +2,7 @@ version = "1.3.0"
 
 [workspace]
 resolver = "3"
-members = ["crates/git-flow", "crates/git-flow-tui-core", "crates/git-flow-tui"]
+members = ["./git-flow", "./git-flow-tui-core", "./git-flow-tui"]
 
 
 [profile.release]
