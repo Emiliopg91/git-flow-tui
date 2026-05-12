@@ -1,8 +1,5 @@
-mod bugfix;
-mod feature;
-mod hotfix;
+mod branches;
 mod main_menu;
-mod release;
 mod widgets;
 
 use std::time::Duration;
@@ -16,11 +13,13 @@ use ratatui::{
 };
 
 use crate::ui::{
-    bugfix::{finish::BugfixFinish, start::BugfixStart},
-    feature::{finish::FeatureFinish, start::FeatureStart},
-    hotfix::{finish::HotfixFinish, start::HotfixStart},
+    branches::{
+        bugfix::{finish::BugfixFinish, start::BugfixStart},
+        feature::{finish::FeatureFinish, start::FeatureStart},
+        hotfix::{finish::HotfixFinish, start::HotfixStart},
+        release::{finish::ReleaseFinish, start::ReleaseStart},
+    },
     main_menu::MainMenu,
-    release::{finish::ReleaseFinish, start::ReleaseStart},
 };
 
 pub enum AppState {

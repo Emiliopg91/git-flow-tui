@@ -15,8 +15,10 @@ use ratatui::{
 };
 
 use crate::ui::{
-    AppState, UiIface, bugfix::BugfixList, feature::FeatureList, hotfix::HotfixList,
-    release::ReleaseList,
+    AppState, UiIface,
+    branches::{
+        bugfix::BugfixList, feature::FeatureList, hotfix::HotfixList, release::ReleaseList,
+    },
 };
 
 pub struct MainMenu {
