@@ -3,7 +3,7 @@ run:
 	
 clean:
 	@cargo clean
-	@rm -Rf *.pkg.tar.zst git-flow-tui pkg src dist crates/git-flow/tests/repo Cargo.lock
+	@rm -Rf *.pkg.tar.zst git-flow-rs pkg src dist crates/git-flow-rs/tests/repo Cargo.lock
 
 release: clean
 	@python resources/scripts/release.py
