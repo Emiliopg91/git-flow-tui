@@ -256,9 +256,8 @@ impl GitWrapper {
             .filter_map(|s| {
                 let cleaned = s.trim().trim_start_matches('*').trim();
 
-                let mut parts = cleaned.splitn(3, '/');
+                let mut parts = cleaned.splitn(2, '/');
 
-                let _remote = parts.next()?;
                 let kind = parts.next()?;
                 let name = parts.next()?;
 
