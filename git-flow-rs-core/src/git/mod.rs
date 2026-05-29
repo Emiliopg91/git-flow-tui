@@ -1,6 +1,6 @@
 pub mod errors;
 
-use std::{ffi::OsStr, path::Path, process::exit};
+use std::{ffi::OsStr, path::Path};
 
 use fwkarq::shell::{Shell, ShellOutput};
 
@@ -93,7 +93,7 @@ impl GitWrapper {
     pub async fn pull() -> Result<(), GitError> {
         run_shell_command("git", ["pull"], true)
             .await
-            .map_err(|e| GitError::PullFailed(e))?;
+            .map_err(GitError::PullFailed)?;
 
         Ok(())
     }
@@ -110,7 +110,7 @@ impl GitWrapper {
 
         run_shell_command("git", &args, true)
             .await
-            .map_err(|e| GitError::PushFailed(e))?;
+            .map_err(GitError::PushFailed)?;
 
         Ok(())
     }
@@ -126,7 +126,7 @@ impl GitWrapper {
     pub async fn commit(msg: &str) -> Result<(), GitError> {
         run_shell_command("git", ["commit", "--allow-empty", "-m", msg], true)
             .await
-            .map_err(|e| GitError::CommitFailed(e))?;
+            .map_err(GitError::CommitFailed)?;
 
         Ok(())
     }

@@ -21,28 +21,24 @@ enum Action {
 enum Commands {
     Feature {
         name: String,
-
         #[arg(value_enum)]
         action: Action,
     },
 
     Release {
         name: String,
-
         #[arg(value_enum)]
         action: Action,
     },
 
     Hotfix {
         name: String,
-
         #[arg(value_enum)]
         action: Action,
     },
 
     Bugfix {
         name: String,
-
         #[arg(value_enum)]
         action: Action,
     },

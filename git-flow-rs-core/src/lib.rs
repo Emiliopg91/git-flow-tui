@@ -1,6 +1,6 @@
-use std::{error::Error, process::exit};
+use std::error::Error;
 
-use crate::{git::GitWrapper, others::exit_code::ExitCode};
+use crate::git::GitWrapper;
 
 pub mod git;
 pub mod logic;
